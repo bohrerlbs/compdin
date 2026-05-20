@@ -6,6 +6,7 @@ import { authConfig } from "@/auth.config"
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "compdin-secret-fallback-5gav",
   providers: [
     Credentials({
       credentials: {
