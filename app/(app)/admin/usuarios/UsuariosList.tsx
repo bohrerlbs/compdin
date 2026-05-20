@@ -37,8 +37,8 @@ export default function UsuariosList({ usuarios }: { usuarios: Usuario[] }) {
 
   function handleToggle(userId: string, ativo: boolean) {
     startTransition(async () => {
-      await toggleAtivo(userId, !ativo)
-      router.refresh()
+      const result = await toggleAtivo(userId, !ativo)
+      if (!result.error) router.refresh()
     })
   }
 

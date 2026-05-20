@@ -26,12 +26,12 @@ export default function NovoUsuarioForm() {
     e.preventDefault()
     setErro("")
     startTransition(async () => {
-      try {
-        await criarUsuario({ nome, trigrama, matricula, senha, role })
+      const result = await criarUsuario({ nome, trigrama, matricula, senha, role })
+      if (result.error) {
+        setErro(result.error)
+      } else {
         setNome(""); setTrigrama(""); setMatricula(""); setSenha(""); setRole("MECANICO")
         router.refresh()
-      } catch (err: unknown) {
-        setErro(err instanceof Error ? err.message : "Erro ao criar usuário.")
       }
     })
   }

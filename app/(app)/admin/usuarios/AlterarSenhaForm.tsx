@@ -17,11 +17,11 @@ export default function AlterarSenhaForm({ userId, onFechado }: Props) {
     e.preventDefault()
     setErro("")
     startTransition(async () => {
-      try {
-        await alterarSenha(userId, senha)
+      const result = await alterarSenha(userId, senha)
+      if (result.error) {
+        setErro(result.error)
+      } else {
         onFechado()
-      } catch (err: unknown) {
-        setErro(err instanceof Error ? err.message : "Erro.")
       }
     })
   }

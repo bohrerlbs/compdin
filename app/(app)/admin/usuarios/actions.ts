@@ -19,37 +19,60 @@ export async function criarUsuario(data: {
   matricula: string
   senha: string
   role: Role
-}) {
-  await checkPermissao()
+}): Promise<{ error?: string }> {
+  try {
+    await checkPermissao()
 
-  const trigrama = data.trigrama.toUpperCase().trim()
-  const matricula = data.matricula.trim().toLowerCase()
+    const trigrama = data.trigrama.toUpperCase().trim()
+    const matricula = data.matricula.trim().toLowerCase()
 
-  if (!/^[A-Z]{3}$/.test(trigrama)) throw new Error("Trigrama deve ter exatamente 3 letras.")
-  if (!data.nome.trim()) throw new Error("Nome obrigatório.")
-  if (data.senha.length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres.")
+    if (!/^[A-Z]{3}$/.test(trigrama)) return { error: "Trigrama deve ter exatamente 3 letras." }
+    if (!data.nome.trim()) return { error: "Nome obrigatório." }
+    if (data.senha.length < 6) return { error: "Senha deve ter pelo menos 6 caracteres." }
 
-  const passwordHash = await bcrypt.hash(data.senha, 10)
+    const passwordHash = await bcrypt.hash(data.senha, 10)
 
-  await prisma.user.create({
-    data: {
-      nome: data.nome.trim(),
-      trigrama,
-      matricula,
-      passwordHash,
-      role: data.role,
-    },
-  })
+    await prisma.user.create({
+      data: {
+        nome: data.nome.trim(),
+        trigrama,
+        matricula,
+        passwordHash,
+        role: data.role,
+      },
+    })
+
+    return {}
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Não autorizado." || err.message === "Sem permissão.")) throw err
+    const msg = err instanceof Error ? err.message : "Erro ao criar usuário."
+    if (msg.includes("Unique constraint") || msg.includes("unique constraint")) {
+      return { error: "Matrícula ou trigrama já cadastrado." }
+    }
+    return { error: msg }
+  }
 }
 
-export async function alterarSenha(userId: string, novaSenha: string) {
-  await checkPermissao()
-  if (novaSenha.length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres.")
-  const passwordHash = await bcrypt.hash(novaSenha, 10)
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash } })
+export async function alterarSenha(userId: string, novaSenha: string): Promise<{ error?: string }> {
+  try {
+    await checkPermissao()
+    if (novaSenha.length < 6) return { error: "Senha deve ter pelo menos 6 caracteres." }
+    const passwordHash = await bcrypt.hash(novaSenha, 10)
+    await prisma.user.update({ where: { id: userId }, data: { passwordHash } })
+    return {}
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Não autorizado." || err.message === "Sem permissão.")) throw err
+    return { error: err instanceof Error ? err.message : "Erro ao alterar senha." }
+  }
 }
 
-export async function toggleAtivo(userId: string, ativo: boolean) {
-  await checkPermissao()
-  await prisma.user.update({ where: { id: userId }, data: { ativo } })
+export async function toggleAtivo(userId: string, ativo: boolean): Promise<{ error?: string }> {
+  try {
+    await checkPermissao()
+    await prisma.user.update({ where: { id: userId }, data: { ativo } })
+    return {}
+  } catch (err) {
+    if (err instanceof Error && (err.message === "Não autorizado." || err.message === "Sem permissão.")) throw err
+    return { error: err instanceof Error ? err.message : "Erro ao atualizar usuário." }
+  }
 }
