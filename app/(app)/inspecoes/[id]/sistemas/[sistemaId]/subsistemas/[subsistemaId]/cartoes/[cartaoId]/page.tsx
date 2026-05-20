@@ -5,6 +5,7 @@ import Link from "next/link"
 import SubitemCard from "./SubitemCard"
 import AvisosPanel from "./AvisosPanel"
 import DefeitosPanel from "./DefeitosPanel"
+import AdminCartaoEditor from "./AdminCartaoEditor"
 
 interface Props {
   params: Promise<{ id: string; sistemaId: string; subsistemaId: string; cartaoId: string }>
@@ -73,7 +74,8 @@ export default async function CartaoPage({ params }: Props) {
   const execucao = cartao.execucoes[0]
   const inspecaoAberta = inspecao.status === "ABERTA"
   const podeEditar = inspecaoAberta && (role === "MECANICO" || role === "ENCARREGADO" || role === "ADMIN")
-  const podeAvisar = inspecaoAberta && (role === "ENCARREGADO" || role === "INSPETOR" || role === "ADMIN")
+  const podeAvisar = inspecaoAberta
+  const podeDesassinar = inspecaoAberta && (role === "INSPETOR" || role === "ADMIN") && !!execucao?.inspecionadoEm
 
   const todosConcluidos = execucao
     ? execucao.subitemStatuses.every((s) => s.status === "CONCLUIDA")
@@ -352,6 +354,7 @@ export default async function CartaoPage({ params }: Props) {
               observacaoEm={st.observacaoEm?.toISOString()}
               podeEditar={podeEditar}
               podeInspecionar={podeInspecionar && idx === execucao.subitemStatuses.length - 1}
+              podeDesassinar={podeDesassinar && idx === execucao.subitemStatuses.length - 1}
               isLastSubitem={idx === execucao.subitemStatuses.length - 1}
               execucaoId={execucao.id}
               inspecionadoEm={execucao.inspecionadoEm?.toISOString()}
@@ -364,6 +367,14 @@ export default async function CartaoPage({ params }: Props) {
         <p style={{ color: "var(--text-dim)", fontSize: "0.85rem", textAlign: "center", padding: "2rem 0" }}>
           Este cartão não faz parte desta inspeção.
         </p>
+      )}
+
+      {role === "ADMIN" && (
+        <AdminCartaoEditor
+          cartaoId={cartao.id}
+          wp={cartao.wp ?? null}
+          ferramentas={cartao.ferramentas.map(f => ({ id: f.id, nome: f.nome, especificacao: f.especificacao ?? null }))}
+        />
       )}
     </div>
   )

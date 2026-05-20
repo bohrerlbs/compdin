@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { StatusSubitem } from "@prisma/client"
-import { atualizarSubitem, inspecionarCartao, salvarObservacao } from "./actions"
+import { atualizarSubitem, inspecionarCartao, salvarObservacao, desassinarCartao } from "./actions"
 
 interface Props {
   statusId: string
@@ -21,6 +21,7 @@ interface Props {
   observacaoEm?: string
   podeEditar: boolean
   podeInspecionar: boolean
+  podeDesassinar: boolean
   isLastSubitem: boolean
   execucaoId: string
   inspecionadoEm?: string
@@ -56,6 +57,7 @@ export default function SubitemCard({
   observacaoEm,
   podeEditar,
   podeInspecionar,
+  podeDesassinar,
   isLastSubitem,
   execucaoId,
   inspecionadoEm,
@@ -70,6 +72,10 @@ export default function SubitemCard({
   const [savedObs, setSavedObs] = useState(initialObservacao ?? "")
   const [isPending, startTransition] = useTransition()
   const [isSavingObs, startObsTransition] = useTransition()
+  const [showDesassinar, setShowDesassinar] = useState(false)
+  const [msgDesassinar, setMsgDesassinar] = useState("")
+  const [erroDesassinar, setErroDesassinar] = useState("")
+  const [isDesassinando, startDesassinar] = useTransition()
 
   function handleCiclo() {
     if (!podeEditar || isPending) return
@@ -421,25 +427,80 @@ export default function SubitemCard({
             }}
           >
             {inspecionado || inspecionadoEm ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: "var(--green-text)", fontSize: "0.75rem" }}>✔</span>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
-                  Inspecionado por{" "}
-                  <span
-                    style={{
-                      fontFamily: "monospace",
-                      fontWeight: 700,
-                      color: "var(--gold-bright)",
-                    }}
-                  >
-                    {inspecionadorTrigrama}
-                  </span>
-                  {inspecionadoEm && (
-                    <span style={{ color: "var(--text-dim)" }}>
-                      {" "}· {fmtDateTime(inspecionadoEm)}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ color: "var(--green-text)", fontSize: "0.75rem" }}>✔</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
+                      Inspecionado por{" "}
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, color: "var(--gold-bright)" }}>
+                        {inspecionadorTrigrama}
+                      </span>
+                      {inspecionadoEm && (
+                        <span style={{ color: "var(--text-dim)" }}>{" "}· {fmtDateTime(inspecionadoEm)}</span>
+                      )}
                     </span>
+                  </div>
+                  {podeDesassinar && !showDesassinar && (
+                    <button
+                      onClick={() => setShowDesassinar(true)}
+                      style={{ fontSize: "0.6rem", color: "rgba(220,80,80,0.7)", background: "none", border: "1px solid rgba(220,80,80,0.3)", borderRadius: 5, padding: "2px 8px", cursor: "pointer" }}
+                    >
+                      remover assinatura
+                    </button>
                   )}
-                </span>
+                </div>
+
+                {showDesassinar && (
+                  <div style={{ marginTop: 8, padding: "0.6rem 0.75rem", background: "rgba(220,80,80,0.08)", border: "1px solid rgba(220,80,80,0.25)", borderRadius: 7 }}>
+                    <p style={{ color: "var(--text-muted)", fontSize: "0.7rem", margin: "0 0 6px" }}>
+                      Mensagem para o mecânico (obrigatória):
+                    </p>
+                    <textarea
+                      value={msgDesassinar}
+                      onChange={e => setMsgDesassinar(e.target.value)}
+                      rows={2}
+                      placeholder="Explique o motivo de remover a assinatura..."
+                      style={{
+                        width: "100%", background: "var(--bg-input)", border: "1px solid var(--border)",
+                        borderRadius: 6, color: "var(--text-primary)", padding: "0.4rem 0.6rem",
+                        fontSize: "0.78rem", resize: "vertical", outline: "none", boxSizing: "border-box",
+                      }}
+                    />
+                    {erroDesassinar && <p style={{ color: "var(--red-text)", fontSize: "0.7rem", margin: "3px 0 0" }}>{erroDesassinar}</p>}
+                    <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                      <button
+                        disabled={isDesassinando || !msgDesassinar.trim()}
+                        onClick={() => {
+                          setErroDesassinar("")
+                          startDesassinar(async () => {
+                            const r = await desassinarCartao(execucaoId, msgDesassinar)
+                            if (r.error) { setErroDesassinar(r.error) } else {
+                              setInspecionado(false)
+                              setShowDesassinar(false)
+                              setMsgDesassinar("")
+                            }
+                          })
+                        }}
+                        style={{
+                          flex: 1, fontSize: "0.68rem", fontWeight: 700, padding: "5px",
+                          background: "rgba(220,80,80,0.7)", color: "#fff", border: "none",
+                          borderRadius: 6, cursor: isDesassinando ? "not-allowed" : "pointer",
+                          opacity: isDesassinando || !msgDesassinar.trim() ? 0.5 : 1,
+                        }}
+                      >
+                        {isDesassinando ? "Removendo..." : "Confirmar remoção"}
+                      </button>
+                      <button
+                        onClick={() => { setShowDesassinar(false); setMsgDesassinar(""); setErroDesassinar("") }}
+                        className="btn-ghost"
+                        style={{ fontSize: "0.68rem", padding: "5px 10px" }}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : podeInspecionar ? (
               <button

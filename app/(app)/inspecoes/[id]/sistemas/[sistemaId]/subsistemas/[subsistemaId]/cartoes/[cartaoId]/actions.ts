@@ -84,14 +84,98 @@ export async function enviarAviso(execucaoId: string, texto: string) {
   const session = await auth()
   if (!session) throw new Error("Não autorizado.")
 
-  const { id: userId, role } = session.user
-  if (role !== "ENCARREGADO" && role !== "INSPETOR" && role !== "ADMIN") {
-    throw new Error("Sem permissão.")
-  }
+  const { id: userId } = session.user
 
   await prisma.avisoExecucao.create({
     data: { execucaoId, autorId: userId, texto: texto.trim() },
   })
+}
+
+export async function desassinarCartao(execucaoId: string, mensagem: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    const { id: userId, role } = session.user
+    if (role !== "INSPETOR" && role !== "ADMIN") return { error: "Sem permissão." }
+
+    await prisma.execucaoCartao.update({
+      where: { id: execucaoId },
+      data: { inspecionadoEm: null, inspecionadorId: null },
+    })
+
+    if (mensagem.trim()) {
+      await prisma.avisoExecucao.create({
+        data: { execucaoId, autorId: userId, texto: mensagem.trim() },
+      })
+    }
+
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao desassinar." }
+  }
+}
+
+export async function atualizarWp(cartaoId: string, wp: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    if (session.user.role !== "ADMIN") return { error: "Apenas Admin." }
+
+    await prisma.cartao.update({
+      where: { id: cartaoId },
+      data: { wp: wp.trim() || null },
+    })
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao atualizar WP." }
+  }
+}
+
+export async function criarFerramenta(cartaoId: string, nome: string, especificacao: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    if (session.user.role !== "ADMIN") return { error: "Apenas Admin." }
+    if (!nome.trim()) return { error: "Nome obrigatório." }
+
+    const count = await prisma.ferramenta.count({ where: { cartaoId } })
+    await prisma.ferramenta.create({
+      data: { cartaoId, nome: nome.trim(), especificacao: especificacao.trim() || null, ordem: count },
+    })
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao criar ferramenta." }
+  }
+}
+
+export async function atualizarFerramenta(ferramentaId: string, nome: string, especificacao: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    if (session.user.role !== "ADMIN") return { error: "Apenas Admin." }
+    if (!nome.trim()) return { error: "Nome obrigatório." }
+
+    await prisma.ferramenta.update({
+      where: { id: ferramentaId },
+      data: { nome: nome.trim(), especificacao: especificacao.trim() || null },
+    })
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao atualizar ferramenta." }
+  }
+}
+
+export async function deletarFerramenta(ferramentaId: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    if (session.user.role !== "ADMIN") return { error: "Apenas Admin." }
+
+    await prisma.ferramenta.delete({ where: { id: ferramentaId } })
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao excluir ferramenta." }
+  }
 }
 
 export async function editarAviso(avisoId: string, novoTexto: string) {

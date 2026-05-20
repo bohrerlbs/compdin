@@ -105,7 +105,7 @@ export default function AvisosPanel({ execucaoId, avisos: initialAvisos, podeAvi
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--text-dim)", fontWeight: 700 }}>
-            AVISOS DO ENCARREGADO / INSPETOR
+            AVISOS / MENSAGENS
           </span>
           {naoLidos > 0 && (
             <span
@@ -263,7 +263,7 @@ export default function AvisosPanel({ execucaoId, avisos: initialAvisos, podeAvi
                 fontWeight: 600,
               }}
             >
-              + novo aviso para o mecânico
+              + nova mensagem
             </button>
           )}
 
