@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Read(//c/Users/Leonardo/Desktop/**)",
+      "Bash(npx create-next-app@latest compdin --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest compdin-app --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\Leonardo\\\\Desktop\\\\compdin\\\\prisma\\\\seed.ts\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(node -e \"const crypto = require\\('crypto'\\); console.log\\(crypto.randomBytes\\(32\\).toString\\('base64'\\)\\)\")",
+      "PowerShell(npm run *)"
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+/* ── Paleta FAB / Pantera Negra ──────────────────────────────────────────── */
+:root {
+  --bg-base:       #06080e;
+  --bg-card:       #0b1120;
+  --bg-card-hover: #101828;
+  --bg-input:      #0d1520;
+  --border:        #1c2e48;
+  --border-gold:   rgba(190,148,50,0.35);
+  --gold:          #be9432;
+  --gold-bright:   #e8c060;
+  --gold-dim:      rgba(190,148,50,0.15);
+  --text-primary:  #dce8f0;
+  --text-muted:    #5a7890;
+  --text-dim:      #3a5060;
+  --green-ok:      #27623a;
+  --green-text:    #4ade80;
+  --yellow-warn:   #b45309;
+  --yellow-text:   #fbbf24;
+  --red-err:       #7f1d1d;
+  --red-text:      #f87171;
+}
+
+@theme inline {
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Scrollbar sutil ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* ── Utilitários customizados ────────────────────────────────────────────── */
+.card-mil {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.card-mil:hover {
+  background: var(--bg-card-hover);
+  border-color: #243a56;
+}
+.card-mil-gold {
+  border-color: var(--border-gold);
+}
+.text-gold { color: var(--gold); }
+.text-gold-bright { color: var(--gold-bright); }
+.text-muted { color: var(--text-muted); }
+.text-dim { color: var(--text-dim); }
+.border-mil { border-color: var(--border); }
+.bg-card { background: var(--bg-card); }
+.bg-input { background: var(--bg-input); }
+
+.badge-gold {
+  background: var(--gold-dim);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-bright);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.badge-green {
+  background: rgba(39,98,58,0.35);
+  border: 1px solid rgba(74,222,128,0.25);
+  color: var(--green-text);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+.badge-yellow {
+  background: rgba(180,83,9,0.25);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: var(--yellow-text);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+.badge-red {
+  background: rgba(127,29,29,0.35);
+  border: 1px solid rgba(248,113,113,0.25);
+  color: var(--red-text);
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.btn-primary {
+  background: var(--gold);
+  color: #07080e;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: var(--gold-bright); }
+.btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-ghost:hover { border-color: #2a4060; color: var(--text-primary); }
+
+.progress-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+.progress-bar-fill.done { background: var(--green-text); }
+.progress-bar-fill.partial { background: var(--gold); }
+
+/* ── Linha divisória estilo militar ─────────────────────────────────────── */
+.divider-mil {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
+  margin: 1.25rem 0;
+}

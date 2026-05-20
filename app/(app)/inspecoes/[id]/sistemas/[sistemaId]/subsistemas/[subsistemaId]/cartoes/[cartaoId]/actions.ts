@@ -1,0 +1,192 @@
+"use server"
+
+import { auth } from "@/auth"
+import { prisma } from "@/lib/prisma"
+import { StatusSubitem } from "@prisma/client"
+import { revalidatePath } from "next/cache"
+
+export async function atualizarSubitem(statusId: string, novoStatus: StatusSubitem) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const { id: userId, role } = session.user
+  if (role !== "MECANICO" && role !== "ENCARREGADO" && role !== "ADMIN") {
+    throw new Error("Sem permissão.")
+  }
+
+  await prisma.subitemStatus.update({
+    where: { id: statusId },
+    data: {
+      status: novoStatus,
+      mecanicoId: userId,
+      dataInicio: novoStatus === "INICIADA" ? new Date() : undefined,
+      dataConclusao: novoStatus === "CONCLUIDA" ? new Date() : undefined,
+    },
+  })
+}
+
+export async function salvarObservacao(statusId: string, observacao: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const { id: userId, role } = session.user
+  if (role !== "MECANICO" && role !== "ENCARREGADO" && role !== "ADMIN") {
+    throw new Error("Sem permissão.")
+  }
+
+  const atual = await prisma.subitemStatus.findUnique({
+    where: { id: statusId },
+    select: { observacaoAutorId: true },
+  })
+
+  // Só o autor original pode editar (ou se ainda não tem autor)
+  if (atual?.observacaoAutorId && atual.observacaoAutorId !== userId) {
+    throw new Error("Apenas o autor pode editar esta observação.")
+  }
+
+  await prisma.subitemStatus.update({
+    where: { id: statusId },
+    data: {
+      observacao: observacao.trim() || null,
+      observacaoAutorId: observacao.trim() ? userId : null,
+      observacaoEm: observacao.trim() ? new Date() : null,
+    },
+  })
+}
+
+export async function inspecionarCartao(execucaoId: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const { id: userId, role } = session.user
+  if (role !== "INSPETOR" && role !== "ADMIN") {
+    throw new Error("Sem permissão. Apenas Inspetor ou Admin.")
+  }
+
+  const statuses = await prisma.subitemStatus.findMany({
+    where: { execucaoId },
+    select: { status: true },
+  })
+
+  const todosOk = statuses.length > 0 && statuses.every((s) => s.status === "CONCLUIDA")
+  if (!todosOk) throw new Error("Todos os subitens devem estar concluídos antes de inspecionar.")
+
+  await prisma.execucaoCartao.update({
+    where: { id: execucaoId },
+    data: {
+      inspecionadoEm: new Date(),
+      inspecionadorId: userId,
+    },
+  })
+}
+
+export async function enviarAviso(execucaoId: string, texto: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const { id: userId, role } = session.user
+  if (role !== "ENCARREGADO" && role !== "INSPETOR" && role !== "ADMIN") {
+    throw new Error("Sem permissão.")
+  }
+
+  await prisma.avisoExecucao.create({
+    data: { execucaoId, autorId: userId, texto: texto.trim() },
+  })
+}
+
+export async function editarAviso(avisoId: string, novoTexto: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const aviso = await prisma.avisoExecucao.findUnique({ where: { id: avisoId }, select: { autorId: true } })
+  if (!aviso) throw new Error("Aviso não encontrado.")
+  if (aviso.autorId !== session.user.id) throw new Error("Apenas o autor pode editar este aviso.")
+
+  await prisma.avisoExecucao.update({
+    where: { id: avisoId },
+    data: { texto: novoTexto.trim(), editadoEm: new Date() },
+  })
+}
+
+export async function deletarAviso(avisoId: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const aviso = await prisma.avisoExecucao.findUnique({ where: { id: avisoId }, select: { autorId: true } })
+  if (!aviso) throw new Error("Aviso não encontrado.")
+  if (aviso.autorId !== session.user.id) throw new Error("Apenas o autor pode excluir este aviso.")
+
+  await prisma.avisoLeitura.deleteMany({ where: { avisoId } })
+  await prisma.avisoExecucao.delete({ where: { id: avisoId } })
+}
+
+export async function editarDefeito(defeitoId: string, novaDescricao: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const defeito = await prisma.defeitoExecucao.findUnique({ where: { id: defeitoId }, select: { inspetorId: true } })
+  if (!defeito) throw new Error("Defeito não encontrado.")
+  if (defeito.inspetorId !== session.user.id) throw new Error("Apenas o inspetor que registrou pode editar este defeito.")
+
+  await prisma.defeitoExecucao.update({
+    where: { id: defeitoId },
+    data: { descricao: novaDescricao.trim(), editadoEm: new Date() },
+  })
+}
+
+export async function deletarDefeito(defeitoId: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const defeito = await prisma.defeitoExecucao.findUnique({ where: { id: defeitoId }, select: { inspetorId: true } })
+  if (!defeito) throw new Error("Defeito não encontrado.")
+  if (defeito.inspetorId !== session.user.id) throw new Error("Apenas o inspetor que registrou pode excluir este defeito.")
+
+  await prisma.defeitoExecucao.delete({ where: { id: defeitoId } })
+}
+
+export async function marcarAvisosLidos(execucaoId: string) {
+  const session = await auth()
+  if (!session) return
+
+  const { id: userId } = session.user
+
+  const avisos = await prisma.avisoExecucao.findMany({
+    where: { execucaoId },
+    select: { id: true },
+  })
+
+  for (const aviso of avisos) {
+    await prisma.avisoLeitura.upsert({
+      where: { avisoId_userId: { avisoId: aviso.id, userId } },
+      update: {},
+      create: { avisoId: aviso.id, userId },
+    })
+  }
+}
+
+export async function registrarDefeito(execucaoId: string, descricao: string) {
+  const session = await auth()
+  if (!session) throw new Error("Não autorizado.")
+
+  const { id: userId, role } = session.user
+  if (role !== "INSPETOR" && role !== "ADMIN") {
+    throw new Error("Sem permissão. Apenas Inspetor ou Admin.")
+  }
+
+  // Cria o defeito
+  await prisma.defeitoExecucao.create({
+    data: { execucaoId, inspetorId: userId, descricao: descricao.trim() },
+  })
+
+  // Reabre o cartão: remove assinatura e volta todos os subitens a PENDENTE
+  await prisma.execucaoCartao.update({
+    where: { id: execucaoId },
+    data: { inspecionadoEm: null, inspecionadorId: null },
+  })
+
+  await prisma.subitemStatus.updateMany({
+    where: { execucaoId },
+    data: { status: "PENDENTE", mecanicoId: null, dataInicio: null, dataConclusao: null },
+  })
+}

@@ -1,0 +1,282 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  MECANICO
+  ENCARREGADO
+  INSPETOR
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  nome         String
+  trigrama     String   @unique  // 3 letras maiúsculas, ex: "LEO"
+  matricula    String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(MECANICO)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+
+  inspecoesAbertas       Inspecao[]        @relation("abertaPor")
+  inspecoesFechadas      Inspecao[]        @relation("fechadaPor")
+  subitemStatuses        SubitemStatus[]
+  execucoesInspecionadas ExecucaoCartao[]  @relation("inspecionador")
+  avisosEnviados         AvisoExecucao[]   @relation("avisosEnviados")
+  defeitosRegistrados    DefeitoExecucao[] @relation("defeitosRegistrados")
+
+  @@map("users")
+}
+
+// ─── Aeronave ─────────────────────────────────────────────────────────────────
+
+model Anv {
+  id        String     @id @default(cuid())
+  matricula String     @unique
+  modelo    String     @default("H-60L")
+  ativo     Boolean    @default(true)
+  inspecoes Inspecao[]
+
+  @@map("anvs")
+}
+
+// ─── Inspeção ─────────────────────────────────────────────────────────────────
+
+enum InspecaoTipo {
+  INSP_30D
+  INSP_6M
+  INSP_90D
+  INSP_12M
+  INSP_24M
+  PMS_40
+  PMS_120
+  PMS_360
+  PMI_480
+  PMI_960
+}
+
+enum InspecaoStatus {
+  ABERTA
+  CONCLUIDA
+  CANCELADA
+}
+
+model Inspecao {
+  id           String         @id @default(cuid())
+  anvId        String         @map("anv_id")
+  tipo         InspecaoTipo
+  status       InspecaoStatus @default(ABERTA)
+  abertaEm     DateTime       @default(now()) @map("aberta_em")
+  abertaPorId  String         @map("aberta_por_id")
+  fechadaEm    DateTime?      @map("fechada_em")
+  fechadaPorId String?        @map("fechada_por_id")
+  observacao   String?
+
+  anv       Anv            @relation(fields: [anvId], references: [id])
+  abertaPor User           @relation("abertaPor", fields: [abertaPorId], references: [id])
+  fechadaPor User?         @relation("fechadaPor", fields: [fechadaPorId], references: [id])
+  execucoes ExecucaoCartao[]
+
+  @@map("inspecoes")
+}
+
+// ─── Catálogo ─────────────────────────────────────────────────────────────────
+
+model Sistema {
+  id          String       @id @default(cuid())
+  codigo      String       @unique
+  nomeEn      String       @map("nome_en")
+  nomePt      String       @map("nome_pt")
+  ordem       Int          @default(0)
+  subsistemas Subsistema[]
+
+  @@map("sistemas")
+}
+
+model Subsistema {
+  id        String   @id @default(cuid())
+  sistemaId String   @map("sistema_id")
+  nomeEn    String   @map("nome_en")
+  nomePt    String   @map("nome_pt")
+  ordem     Int      @default(0)
+
+  sistema Sistema  @relation(fields: [sistemaId], references: [id])
+  cartoes Cartao[]
+
+  @@map("subsistemas")
+}
+
+enum TipoCartao {
+  VISUAL_CHECK
+  DETAILED_INSPECTION
+  SPECIAL_DETAILED_INSPECTION
+  SERVICE
+  LUBRIFICATION
+  BIM_CHECK
+  TAP_TEST
+  OIL_SAMPLE
+}
+
+model Cartao {
+  id           String     @id @default(cuid())
+  subsistemaId String     @map("subsistema_id")
+  codigo       String
+  nomeEn       String     @map("nome_en")
+  nomePt       String     @map("nome_pt")
+  tipo         TipoCartao
+  publicacao   String?
+  wp           String?
+  duracaoMin   Int?       @map("duracao_min")
+  qtdRecursos  Int?       @map("qtd_recursos") @default(1)
+  omDesignator String?    @map("om_designator")
+  observacao   String?
+  ordem        Int        @default(0)
+
+  subsistema    Subsistema          @relation(fields: [subsistemaId], references: [id])
+  inspecaoTipos CartaoInspecaoTipo[]
+  subitens      Subitem[]
+  execucoes     ExecucaoCartao[]
+  ferramentas   Ferramenta[]
+
+  @@map("cartoes")
+}
+
+model CartaoInspecaoTipo {
+  cartaoId     String       @map("cartao_id")
+  inspecaoTipo InspecaoTipo @map("inspecao_tipo")
+
+  cartao Cartao @relation(fields: [cartaoId], references: [id])
+
+  @@id([cartaoId, inspecaoTipo])
+  @@map("cartao_inspecao_tipos")
+}
+
+model Ferramenta {
+  id            String  @id @default(cuid())
+  cartaoId      String  @map("cartao_id")
+  nome          String
+  especificacao String?
+  ordem         Int     @default(0)
+
+  cartao Cartao @relation(fields: [cartaoId], references: [id])
+
+  @@map("ferramentas")
+}
+
+// ─── Subitens ────────────────────────────────────────────────────────────────
+
+model Subitem {
+  id          String  @id @default(cuid())
+  cartaoId    String  @map("cartao_id")
+  letra       String
+  descricaoPt String  @map("descricao_pt")
+  descricaoEn String? @map("descricao_en")
+  referencia  String?
+  ordem       Int     @default(0)
+
+  cartao   Cartao          @relation(fields: [cartaoId], references: [id])
+  statuses SubitemStatus[]
+
+  @@map("subitens")
+}
+
+// ─── Execução ─────────────────────────────────────────────────────────────────
+
+model ExecucaoCartao {
+  id              String    @id @default(cuid())
+  inspecaoId      String    @map("inspecao_id")
+  cartaoId        String    @map("cartao_id")
+  // Inspector sign-off
+  inspecionadoEm  DateTime? @map("inspecionado_em")
+  inspecionadorId String?   @map("inspecionador_id")
+
+  inspecao        Inspecao        @relation(fields: [inspecaoId], references: [id])
+  cartao          Cartao          @relation(fields: [cartaoId], references: [id])
+  inspecionador   User?           @relation("inspecionador", fields: [inspecionadorId], references: [id])
+  subitemStatuses SubitemStatus[]
+  avisos          AvisoExecucao[]
+  defeitos        DefeitoExecucao[]
+
+  @@unique([inspecaoId, cartaoId])
+  @@map("execucoes_cartao")
+}
+
+// ─── Avisos (Encarregado/Inspetor → Mecânico) ────────────────────────────────
+
+model AvisoExecucao {
+  id        String    @id @default(cuid())
+  execucaoId String   @map("execucao_id")
+  autorId   String    @map("autor_id")
+  texto     String
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+  editadoEm DateTime? @map("editado_em")
+
+  execucao ExecucaoCartao @relation(fields: [execucaoId], references: [id])
+  autor    User           @relation("avisosEnviados", fields: [autorId], references: [id])
+  leituras AvisoLeitura[]
+
+  @@map("avisos_execucao")
+}
+
+model AvisoLeitura {
+  avisoId   String   @map("aviso_id")
+  userId    String   @map("user_id")
+  lidoEm    DateTime @default(now()) @map("lido_em")
+
+  aviso AvisoExecucao @relation(fields: [avisoId], references: [id])
+
+  @@id([avisoId, userId])
+  @@map("aviso_leituras")
+}
+
+// ─── Defeitos (Inspetor → Mecânico, reabre cartão) ────────────────────────────
+
+model DefeitoExecucao {
+  id          String    @id @default(cuid())
+  execucaoId  String    @map("execucao_id")
+  inspetorId  String    @map("inspetor_id")
+  descricao   String
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+  editadoEm   DateTime? @map("editado_em")
+  resolvidoEm DateTime? @map("resolvido_em")
+
+  execucao  ExecucaoCartao @relation(fields: [execucaoId], references: [id])
+  inspetor  User           @relation("defeitosRegistrados", fields: [inspetorId], references: [id])
+
+  @@map("defeitos_execucao")
+}
+
+enum StatusSubitem {
+  PENDENTE
+  INICIADA
+  CONCLUIDA
+}
+
+model SubitemStatus {
+  id               String        @id @default(cuid())
+  execucaoId       String        @map("execucao_id")
+  subitemId        String        @map("subitem_id")
+  status           StatusSubitem @default(PENDENTE)
+  mecanicoId       String?       @map("mecanico_id")
+  dataInicio       DateTime?     @map("data_inicio")
+  dataConclusao    DateTime?     @map("data_conclusao")
+  observacao       String?
+  observacaoAutorId String?      @map("observacao_autor_id")
+  observacaoEm     DateTime?     @map("observacao_em")
+
+  execucao          ExecucaoCartao @relation(fields: [execucaoId], references: [id])
+  subitem           Subitem        @relation(fields: [subitemId], references: [id])
+  mecanico          User?          @relation(fields: [mecanicoId], references: [id])
+
+  @@unique([execucaoId, subitemId])
+  @@map("subitem_statuses")
+}
