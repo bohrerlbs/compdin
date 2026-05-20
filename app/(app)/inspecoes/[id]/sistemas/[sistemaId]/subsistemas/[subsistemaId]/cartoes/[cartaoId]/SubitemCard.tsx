@@ -7,6 +7,7 @@ import { atualizarSubitem, inspecionarCartao, salvarObservacao } from "./actions
 interface Props {
   statusId: string
   letra: string
+  showLetra: boolean
   descricaoPt: string
   descricaoEn?: string
   referencia?: string
@@ -41,6 +42,7 @@ const STATUS_BORDER: Record<StatusSubitem, string> = {
 export default function SubitemCard({
   statusId,
   letra,
+  showLetra,
   descricaoPt,
   descricaoEn,
   referencia,
@@ -62,7 +64,7 @@ export default function SubitemCard({
 }: Props) {
   const [status, setStatus] = useState(initialStatus)
   const [inspecionado, setInspecionado] = useState(!!inspecionadoEm)
-  const [showEn, setShowEn] = useState(false)
+  const [showPt, setShowPt] = useState(false)
   const [showObsInput, setShowObsInput] = useState(false)
   const [obsText, setObsText] = useState(initialObservacao ?? "")
   const [savedObs, setSavedObs] = useState(initialObservacao ?? "")
@@ -117,18 +119,20 @@ export default function SubitemCard({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <span
-            style={{
-              fontFamily: "monospace",
-              fontWeight: 800,
-              fontSize: "1.1rem",
-              color: status === "CONCLUIDA" ? "var(--green-text)" : status === "INICIADA" ? "var(--yellow-text)" : "var(--text-primary)",
-              width: 20,
-              textAlign: "center",
-            }}
-          >
-            {letra}
-          </span>
+          {showLetra && (
+            <span
+              style={{
+                fontFamily: "monospace",
+                fontWeight: 800,
+                fontSize: "1.1rem",
+                color: status === "CONCLUIDA" ? "var(--green-text)" : status === "INICIADA" ? "var(--yellow-text)" : "var(--text-primary)",
+                width: 20,
+                textAlign: "center",
+              }}
+            >
+              {letra}
+            </span>
+          )}
 
           <span
             className={
@@ -175,15 +179,16 @@ export default function SubitemCard({
 
       {/* Corpo */}
       <div style={{ padding: "0.75rem 1rem" }}>
+        {/* Texto principal: EN (ou PT se não houver EN) */}
         <p style={{ color: "var(--text-primary)", fontSize: "0.88rem", lineHeight: 1.55, margin: 0 }}>
-          {descricaoPt}
+          {descricaoEn ?? descricaoPt}
         </p>
 
-        {/* Toggle EN */}
-        {descricaoEn && (
+        {/* Toggle tradução PT */}
+        {descricaoEn && descricaoPt && (
           <>
             <button
-              onClick={() => setShowEn(!showEn)}
+              onClick={() => setShowPt(!showPt)}
               style={{
                 marginTop: 8,
                 fontSize: "0.65rem",
@@ -194,9 +199,9 @@ export default function SubitemCard({
                 letterSpacing: "0.05em",
               }}
             >
-              {showEn ? "▲ ocultar EN" : "▼ ver em inglês"}
+              {showPt ? "▲ ocultar tradução" : "▼ ver tradução"}
             </button>
-            {showEn && (
+            {showPt && (
               <p
                 style={{
                   marginTop: 6,
@@ -205,9 +210,10 @@ export default function SubitemCard({
                   color: "var(--text-muted)",
                   fontSize: "0.78rem",
                   lineHeight: 1.5,
+                  fontStyle: "italic",
                 }}
               >
-                {descricaoEn}
+                {descricaoPt}
               </p>
             )}
           </>

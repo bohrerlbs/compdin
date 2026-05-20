@@ -328,7 +328,7 @@ export default async function CartaoPage({ params }: Props) {
           fontWeight: 700,
         }}
       >
-        TEXTO — PASSOS DA TAREFA
+        TASK TEXT
       </h3>
 
       {execucao ? (
@@ -338,6 +338,7 @@ export default async function CartaoPage({ params }: Props) {
               key={st.id}
               statusId={st.id}
               letra={st.subitem.letra}
+              showLetra={execucao.subitemStatuses.length > 1}
               descricaoPt={cartao.subitens.find((s) => s.id === st.subitemId)?.descricaoPt ?? ""}
               descricaoEn={cartao.subitens.find((s) => s.id === st.subitemId)?.descricaoEn ?? undefined}
               referencia={cartao.subitens.find((s) => s.id === st.subitemId)?.referencia ?? undefined}
