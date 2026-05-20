@@ -3,6 +3,7 @@
 import { signOut } from "next-auth/react"
 import { Role } from "@prisma/client"
 import Link from "next/link"
+import Image from "next/image"
 
 const ROLE_LABEL: Record<Role, string> = {
   MECANICO: "Mecânico",
@@ -38,22 +39,14 @@ export default function Navbar({ user }: Props) {
         {/* Logo / branding */}
         <div className="flex items-center gap-3">
           <Link href="/anvs" className="flex items-center gap-2.5">
-            {/* Escudo estilizado */}
-            <div
-              style={{
-                width: 32,
-                height: 36,
-                background: "linear-gradient(160deg, #0d1a30 0%, #081018 100%)",
-                border: "1px solid var(--border-gold)",
-                clipPath: "polygon(15% 0%, 85% 0%, 100% 15%, 100% 75%, 50% 100%, 0% 75%, 0% 15%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>🐆</span>
-            </div>
+            {/* Brasão do esquadrão */}
+            <Image
+              src="/pantera.jpg"
+              alt="5º/8º GAV Pantera Negra"
+              width={38}
+              height={44}
+              style={{ objectFit: "contain", flexShrink: 0 }}
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <span
