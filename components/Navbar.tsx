@@ -88,7 +88,7 @@ export default function Navbar({ user }: Props) {
                   marginTop: 1,
                 }}
               >
-                PANTERA NEGRA
+                PANTERA
               </div>
             </div>
           </Link>

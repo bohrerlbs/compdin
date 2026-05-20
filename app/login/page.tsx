@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -59,22 +60,15 @@ export default function LoginPage() {
       <div style={{ width: "100%", maxWidth: 340 }}>
         {/* Header militar */}
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
-          {/* Escudo */}
-          <div
-            style={{
-              width: 72,
-              height: 80,
-              margin: "0 auto 1.25rem",
-              background: "linear-gradient(160deg, #0d1a30 0%, #060d1a 100%)",
-              border: "1.5px solid var(--border-gold)",
-              clipPath: "polygon(15% 0%, 85% 0%, 100% 15%, 100% 75%, 50% 100%, 0% 75%, 0% 15%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 32,
-            }}
-          >
-            🐆
+          {/* Brasão */}
+          <div style={{ margin: "0 auto 1.25rem", display: "flex", justifyContent: "center" }}>
+            <Image
+              src="/pantera.jpg"
+              alt="5º/8º GAV Pantera"
+              width={72}
+              height={84}
+              style={{ objectFit: "contain" }}
+            />
           </div>
 
           <div

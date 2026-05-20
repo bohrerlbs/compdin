@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
 import { Role } from "@prisma/client"
 import { criarUsuario } from "./actions"
 
@@ -11,11 +12,8 @@ const ROLE_LABELS: Record<Role, string> = {
   ADMIN: "Admin",
 }
 
-interface Props {
-  onCriado: () => void
-}
-
-export default function NovoUsuarioForm({ onCriado }: Props) {
+export default function NovoUsuarioForm() {
+  const router = useRouter()
   const [nome, setNome] = useState("")
   const [trigrama, setTrigrama] = useState("")
   const [matricula, setMatricula] = useState("")
@@ -31,7 +29,7 @@ export default function NovoUsuarioForm({ onCriado }: Props) {
       try {
         await criarUsuario({ nome, trigrama, matricula, senha, role })
         setNome(""); setTrigrama(""); setMatricula(""); setSenha(""); setRole("MECANICO")
-        onCriado()
+        router.refresh()
       } catch (err: unknown) {
         setErro(err instanceof Error ? err.message : "Erro ao criar usuário.")
       }

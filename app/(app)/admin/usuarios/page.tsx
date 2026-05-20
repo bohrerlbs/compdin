@@ -60,7 +60,7 @@ export default async function UsuariosPage() {
           NOVO USUÁRIO
         </h2>
         <div className="card-mil" style={{ padding: "1rem" }}>
-          <NovoUsuarioForm onCriado={() => {}} />
+          <NovoUsuarioForm />
         </div>
       </section>
 
