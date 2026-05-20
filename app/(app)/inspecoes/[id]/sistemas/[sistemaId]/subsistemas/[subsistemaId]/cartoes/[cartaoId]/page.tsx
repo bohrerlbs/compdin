@@ -374,6 +374,7 @@ export default async function CartaoPage({ params }: Props) {
           cartaoId={cartao.id}
           wp={cartao.wp ?? null}
           ferramentas={cartao.ferramentas.map(f => ({ id: f.id, nome: f.nome, especificacao: f.especificacao ?? null }))}
+          subitens={cartao.subitens.map(s => ({ id: s.id, letra: s.letra, descricaoEn: s.descricaoEn ?? null, descricaoPt: s.descricaoPt }))}
         />
       )}
     </div>

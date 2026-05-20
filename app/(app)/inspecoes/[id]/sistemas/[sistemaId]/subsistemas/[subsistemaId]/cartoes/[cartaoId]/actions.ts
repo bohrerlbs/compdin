@@ -249,6 +249,26 @@ export async function marcarAvisosLidos(execucaoId: string) {
   }
 }
 
+export async function atualizarSubitemTexto(subitemId: string, descricaoEn: string, descricaoPt: string): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+    if (session.user.role !== "ADMIN") return { error: "Apenas Admin." }
+    if (!descricaoPt.trim()) return { error: "Descrição PT obrigatória." }
+
+    await prisma.subitem.update({
+      where: { id: subitemId },
+      data: {
+        descricaoEn: descricaoEn.trim() || null,
+        descricaoPt: descricaoPt.trim(),
+      },
+    })
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao atualizar texto." }
+  }
+}
+
 export async function registrarDefeito(execucaoId: string, descricao: string) {
   const session = await auth()
   if (!session) throw new Error("Não autorizado.")
