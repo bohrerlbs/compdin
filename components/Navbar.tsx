@@ -135,6 +135,21 @@ export default function Navbar({ user }: Props) {
               >
                 USUÁRIOS
               </Link>
+              <Link
+                href="/admin/aeronaves"
+                style={{
+                  color: "var(--text-muted)",
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.08em",
+                  padding: "4px 10px",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  transition: "all 0.15s",
+                }}
+                className="hover:border-gold hover:text-gold hidden sm:block"
+              >
+                AERONAVES
+              </Link>
             </>
           )}
 
