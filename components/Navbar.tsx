@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react"
 import { Role } from "@prisma/client"
 import Link from "next/link"
 import Image from "next/image"
+import NotifBell from "./NotifBell"
 
 const ROLE_LABEL: Record<Role, string> = {
   MECANICO: "Mecânico",
@@ -17,7 +18,7 @@ interface Props {
 }
 
 export default function Navbar({ user }: Props) {
-  const canReport = user.role === "ENCARREGADO" || user.role === "ADMIN"
+  const canReport = user.role === "ENCARREGADO" || user.role === "INSPETOR" || user.role === "ADMIN"
 
   return (
     <header
@@ -41,7 +42,7 @@ export default function Navbar({ user }: Props) {
           <Link href="/anvs" className="flex items-center gap-2.5">
             {/* Brasão do esquadrão */}
             <Image
-              src="/pantera.jpg"
+              src="/58.jpg"
               alt="5º/8º GAV Pantera Negra"
               width={38}
               height={44}
@@ -96,6 +97,23 @@ export default function Navbar({ user }: Props) {
 
         {/* Direita */}
         <div className="flex items-center gap-3">
+          {/* Procedimentos — todos os usuários */}
+          <Link
+            href="/procedimentos"
+            style={{
+              color: "var(--text-muted)",
+              fontSize: "0.72rem",
+              letterSpacing: "0.08em",
+              padding: "4px 10px",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              transition: "all 0.15s",
+            }}
+            className="hover:border-gold hover:text-gold hidden sm:block"
+          >
+            PROC.
+          </Link>
+
           {canReport && (
             <>
               <Link
@@ -146,16 +164,23 @@ export default function Navbar({ user }: Props) {
             </>
           )}
 
+          {/* Sino de notificações */}
+          <NotifBell />
+
           {/* Trigrama badge */}
           <div className="flex items-center gap-2">
-            <div
+            <Link
+              href="/perfil"
               style={{
                 background: "var(--gold-dim)",
                 border: "1px solid var(--border-gold)",
                 borderRadius: 6,
                 padding: "3px 8px",
                 textAlign: "center",
+                textDecoration: "none",
+                display: "block",
               }}
+              title="Meu perfil"
             >
               <div
                 style={{
@@ -178,7 +203,7 @@ export default function Navbar({ user }: Props) {
               >
                 {ROLE_LABEL[user.role].toUpperCase()}
               </div>
-            </div>
+            </Link>
 
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}

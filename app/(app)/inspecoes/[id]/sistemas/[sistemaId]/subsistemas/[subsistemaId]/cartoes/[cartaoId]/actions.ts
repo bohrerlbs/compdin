@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { StatusSubitem } from "@prisma/client"
 import { revalidatePath } from "next/cache"
+import { sendPushToRole, sendPushToUser } from "@/lib/push"
 
 export async function atualizarSubitem(statusId: string, novoStatus: StatusSubitem) {
   const session = await auth()
@@ -23,6 +24,94 @@ export async function atualizarSubitem(statusId: string, novoStatus: StatusSubit
       dataConclusao: novoStatus === "CONCLUIDA" ? new Date() : undefined,
     },
   })
+
+  // Notifications only for INICIADA / CONCLUIDA
+  if (novoStatus === "INICIADA" || novoStatus === "CONCLUIDA") {
+    try {
+      const ctx = await prisma.subitemStatus.findUnique({
+        where: { id: statusId },
+        select: {
+          execucao: {
+            select: {
+              id: true,
+              inspecaoId: true,
+              cartaoId: true,
+              cartao: {
+                select: {
+                  nomePt: true,
+                  codigo: true,
+                  subsistema: { select: { id: true, sistemaId: true } },
+                },
+              },
+              inspecao: { select: { tipo: true, anv: { select: { matricula: true } } } },
+              subitemStatuses: { select: { status: true } },
+            },
+          },
+        },
+      })
+
+      if (ctx?.execucao) {
+        const { execucao: exec } = ctx
+        const anvMatricula = exec.inspecao.anv.matricula
+        const cartaoLabel = `${exec.cartao.codigo} – ${exec.cartao.nomePt}`
+        const actionLabel = novoStatus === "INICIADA" ? "iniciou" : "concluiu"
+        const link = `/inspecoes/${exec.inspecaoId}/sistemas/${exec.cartao.subsistema.sistemaId}/subsistemas/${exec.cartao.subsistema.id}/cartoes/${exec.cartaoId}`
+
+        const encarregados = await prisma.user.findMany({
+          where: { role: "ENCARREGADO", ativo: true },
+          select: { id: true },
+        })
+
+        const payload = {
+          titulo: `${anvMatricula} – ${actionLabel.charAt(0).toUpperCase() + actionLabel.slice(1)}`,
+          corpo: cartaoLabel,
+          link,
+          tipo: "subitem_update",
+        }
+
+        await prisma.notificacao.createMany({
+          data: encarregados.map((e) => ({
+            userId: e.id,
+            tipo: "subitem_update",
+            titulo: payload.titulo,
+            corpo: cartaoLabel,
+            link,
+          })),
+        })
+
+        void sendPushToRole("ENCARREGADO", payload, undefined)
+
+        // If all subitens concluded → notify INSPETORs
+        const allDone = exec.subitemStatuses.length > 0 &&
+          exec.subitemStatuses.every((s) => s.status === "CONCLUIDA")
+
+        if (allDone) {
+          const inspPayload = {
+            titulo: `Cartão pronto para inspeção`,
+            corpo: `${anvMatricula} – ${cartaoLabel}`,
+            link,
+            tipo: "cartao_pronto",
+          }
+          const inspetores = await prisma.user.findMany({
+            where: { role: "INSPETOR", ativo: true },
+            select: { id: true },
+          })
+          await prisma.notificacao.createMany({
+            data: inspetores.map((i) => ({
+              userId: i.id,
+              tipo: "cartao_pronto",
+              titulo: inspPayload.titulo,
+              corpo: inspPayload.corpo,
+              link,
+            })),
+          })
+          void sendPushToRole("INSPETOR", inspPayload)
+        }
+      }
+    } catch {
+      // Notifications are best-effort; don't fail the main action
+    }
+  }
 }
 
 export async function salvarObservacao(statusId: string, observacao: string) {
@@ -98,6 +187,23 @@ export async function desassinarCartao(execucaoId: string, mensagem: string): Pr
     const { id: userId, role } = session.user
     if (role !== "INSPETOR" && role !== "ADMIN") return { error: "Sem permissão." }
 
+    const execCtx = await prisma.execucaoCartao.findUnique({
+      where: { id: execucaoId },
+      select: {
+        inspecaoId: true,
+        cartaoId: true,
+        cartao: {
+          select: {
+            nomePt: true,
+            codigo: true,
+            subsistema: { select: { id: true, sistemaId: true } },
+          },
+        },
+        inspecao: { select: { anv: { select: { matricula: true } } } },
+        subitemStatuses: { select: { mecanicoId: true } },
+      },
+    })
+
     await prisma.execucaoCartao.update({
       where: { id: execucaoId },
       data: { inspecionadoEm: null, inspecionadorId: null },
@@ -107,6 +213,30 @@ export async function desassinarCartao(execucaoId: string, mensagem: string): Pr
       await prisma.avisoExecucao.create({
         data: { execucaoId, autorId: userId, texto: mensagem.trim() },
       })
+    }
+
+    // Notify mechanics who worked on the card
+    if (execCtx) {
+      try {
+        const mecIds = [...new Set(execCtx.subitemStatuses.map((s) => s.mecanicoId).filter(Boolean) as string[])]
+        const link = `/inspecoes/${execCtx.inspecaoId}/sistemas/${execCtx.cartao.subsistema.sistemaId}/subsistemas/${execCtx.cartao.subsistema.id}/cartoes/${execCtx.cartaoId}`
+        const titulo = `Cartão reaberto para correção`
+        const corpo = `${execCtx.inspecao.anv.matricula} – ${execCtx.cartao.codigo} – ${execCtx.cartao.nomePt}`
+
+        await prisma.notificacao.createMany({
+          data: mecIds.map((mecId) => ({
+            userId: mecId,
+            tipo: "cartao_reaberto",
+            titulo,
+            corpo,
+            link,
+          })),
+        })
+
+        await Promise.allSettled(mecIds.map((mId) => sendPushToUser(mId, { titulo, corpo, link, tipo: "cartao_reaberto" })))
+      } catch {
+        // best-effort
+      }
     }
 
     return {}
@@ -278,6 +408,23 @@ export async function registrarDefeito(execucaoId: string, descricao: string) {
     throw new Error("Sem permissão. Apenas Inspetor ou Admin.")
   }
 
+  const execCtx = await prisma.execucaoCartao.findUnique({
+    where: { id: execucaoId },
+    select: {
+      inspecaoId: true,
+      cartaoId: true,
+      cartao: {
+        select: {
+          nomePt: true,
+          codigo: true,
+          subsistema: { select: { id: true, sistemaId: true } },
+        },
+      },
+      inspecao: { select: { anv: { select: { matricula: true } } } },
+      subitemStatuses: { select: { mecanicoId: true } },
+    },
+  })
+
   // Cria o defeito
   await prisma.defeitoExecucao.create({
     data: { execucaoId, inspetorId: userId, descricao: descricao.trim() },
@@ -293,4 +440,28 @@ export async function registrarDefeito(execucaoId: string, descricao: string) {
     where: { execucaoId },
     data: { status: "PENDENTE", mecanicoId: null, dataInicio: null, dataConclusao: null },
   })
+
+  // Notify mechanics who worked on the card
+  if (execCtx) {
+    try {
+      const mecIds = [...new Set(execCtx.subitemStatuses.map((s) => s.mecanicoId).filter(Boolean) as string[])]
+      const link = `/inspecoes/${execCtx.inspecaoId}/sistemas/${execCtx.cartao.subsistema.sistemaId}/subsistemas/${execCtx.cartao.subsistema.id}/cartoes/${execCtx.cartaoId}`
+      const titulo = `Defeito registrado — retrabalho necessário`
+      const corpo = `${execCtx.inspecao.anv.matricula} – ${execCtx.cartao.codigo} – ${execCtx.cartao.nomePt}`
+
+      await prisma.notificacao.createMany({
+        data: mecIds.map((mecId) => ({
+          userId: mecId,
+          tipo: "defeito_registrado",
+          titulo,
+          corpo,
+          link,
+        })),
+      })
+
+      await Promise.allSettled(mecIds.map((mId) => sendPushToUser(mId, { titulo, corpo, link, tipo: "defeito_registrado" })))
+    } catch {
+      // best-effort
+    }
+  }
 }

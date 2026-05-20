@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma"
+import { auth } from "@/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
+import AdicionarCartaoForm from "./AdicionarCartaoForm"
 
 interface Props {
   params: Promise<{ id: string; sistemaId: string; subsistemaId: string }>
@@ -17,8 +19,13 @@ const TIPO_LABEL: Record<string, string> = {
   OIL_SAMPLE: "Oil Sample",
 }
 
+const PRIVILEGED = ["ADMIN", "ENCARREGADO", "INSPETOR"]
+
 export default async function SubsistemaPage({ params }: Props) {
   const { id: inspecaoId, sistemaId, subsistemaId } = await params
+  const session = await auth()
+  const role = session?.user.role ?? "MECANICO"
+  const canManage = PRIVILEGED.includes(role)
 
   const [inspecao, subsistema] = await Promise.all([
     prisma.inspecao.findUnique({
@@ -45,6 +52,9 @@ export default async function SubsistemaPage({ params }: Props) {
   if (!inspecao || !subsistema) notFound()
 
   const cartoesNaInspecao = subsistema.cartoes.filter((c) => c.execucoes.length > 0)
+  const extraCartoes = cartoesNaInspecao
+    .filter((c) => c.extra)
+    .map((c) => ({ id: c.id, codigo: c.codigo, nomePt: c.nomePt }))
 
   return (
     <div>
@@ -78,6 +88,7 @@ export default async function SubsistemaPage({ params }: Props) {
               key={cartao.id}
               href={`/inspecoes/${inspecaoId}/sistemas/${sistemaId}/subsistemas/${subsistemaId}/cartoes/${cartao.id}`}
               className="block bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-4 transition-colors"
+              style={cartao.extra ? { borderColor: "var(--border-gold)", background: "rgba(190,148,50,0.04)" } : {}}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0 pr-2">
@@ -86,6 +97,20 @@ export default async function SubsistemaPage({ params }: Props) {
                     <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
                       {TIPO_LABEL[cartao.tipo] ?? cartao.tipo}
                     </span>
+                    {cartao.extra && (
+                      <span style={{
+                        background: "var(--gold-dim)",
+                        border: "1px solid var(--border-gold)",
+                        color: "var(--gold)",
+                        fontSize: "0.55rem",
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                      }}>
+                        EXTRA
+                      </span>
+                    )}
                   </div>
                   <p className="text-gray-300 text-sm">{cartao.nomePt}</p>
                   {cartao.wp && (
@@ -124,6 +149,15 @@ export default async function SubsistemaPage({ params }: Props) {
           </p>
         )}
       </div>
+
+      {canManage && (
+        <AdicionarCartaoForm
+          inspecaoId={inspecaoId}
+          sistemaId={sistemaId}
+          subsistemaId={subsistemaId}
+          extraCartoes={extraCartoes}
+        />
+      )}
     </div>
   )
 }

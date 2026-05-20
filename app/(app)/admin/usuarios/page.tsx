@@ -10,7 +10,7 @@ export default async function UsuariosPage() {
   if (!session) redirect("/login")
 
   const { role } = session.user
-  if (role !== "ENCARREGADO" && role !== "ADMIN") redirect("/anvs")
+  if (role !== "ENCARREGADO" && role !== "INSPETOR" && role !== "ADMIN") redirect("/anvs")
 
   const usuarios = await prisma.user.findMany({
     select: {

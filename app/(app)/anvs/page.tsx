@@ -2,25 +2,45 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
+import AvisosPanel from "../avisos-gerais/AvisosPanel"
 
 export default async function HomePage() {
   const session = await auth()
   const role = session!.user.role
+  const userId = session!.user.id
 
-  const anvs = await prisma.anv.findMany({
-    where: { ativo: true },
-    orderBy: { matricula: "asc" },
-    include: {
-      inspecoes: {
-        where: { status: InspecaoStatus.ABERTA },
-        select: { id: true, tipo: true, abertaEm: true },
-        orderBy: { abertaEm: "desc" },
+  const now = new Date()
+
+  const [anvs, avisos] = await Promise.all([
+    prisma.anv.findMany({
+      where: { ativo: true },
+      orderBy: { matricula: "asc" },
+      include: {
+        inspecoes: {
+          where: { status: InspecaoStatus.ABERTA },
+          select: { id: true, tipo: true, abertaEm: true },
+          orderBy: { abertaEm: "desc" },
+        },
       },
-    },
-  })
+    }),
+    prisma.avisoGeral.findMany({
+      where: {
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      },
+      orderBy: { criadoEm: "desc" },
+      include: { autor: { select: { trigrama: true, nome: true } } },
+    }),
+  ])
 
   return (
     <div>
+      {/* Avisos Gerais */}
+      <AvisosPanel
+        avisos={avisos as Parameters<typeof AvisosPanel>[0]["avisos"]}
+        userId={userId}
+        userRole={role}
+      />
+
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-white">Aeronaves</h1>
         {role === "ADMIN" && (

@@ -63,7 +63,7 @@ export default function LoginPage() {
           {/* Brasão */}
           <div style={{ margin: "0 auto 1.25rem", display: "flex", justifyContent: "center" }}>
             <Image
-              src="/pantera.jpg"
+              src="/58.jpg"
               alt="5º/8º GAV Pantera"
               width={72}
               height={84}

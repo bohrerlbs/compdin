@@ -2,6 +2,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import SessionProvider from "@/components/SessionProvider"
 import Navbar from "@/components/Navbar"
+import PushSubscriber from "@/components/PushSubscriber"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+      <PushSubscriber />
     </SessionProvider>
   )
 }

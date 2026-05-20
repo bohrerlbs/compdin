@@ -26,14 +26,93 @@ model User {
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now()) @map("criado_em")
 
-  inspecoesAbertas       Inspecao[]        @relation("abertaPor")
-  inspecoesFechadas      Inspecao[]        @relation("fechadaPor")
+  inspecoesAbertas       Inspecao[]           @relation("abertaPor")
+  inspecoesFechadas      Inspecao[]           @relation("fechadaPor")
   subitemStatuses        SubitemStatus[]
-  execucoesInspecionadas ExecucaoCartao[]  @relation("inspecionador")
-  avisosEnviados         AvisoExecucao[]   @relation("avisosEnviados")
-  defeitosRegistrados    DefeitoExecucao[] @relation("defeitosRegistrados")
+  execucoesInspecionadas ExecucaoCartao[]     @relation("inspecionador")
+  avisosEnviados         AvisoExecucao[]      @relation("avisosEnviados")
+  defeitosRegistrados    DefeitoExecucao[]    @relation("defeitosRegistrados")
+  procedimentos          ProcedimentoPadrao[]
+  notificacoes           Notificacao[]
+  pushSubscriptions      PushSubscription[]
+  avisosGerais           AvisoGeral[]
 
   @@map("users")
+}
+
+// ─── Avisos Gerais ────────────────────────────────────────────────────────────
+
+model AvisoGeral {
+  id        String    @id @default(cuid())
+  titulo    String
+  corpo     String
+  autorId   String    @map("autor_id")
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+  editadoEm DateTime? @map("editado_em")
+  expiresAt DateTime? @map("expires_at")
+
+  autor User @relation(fields: [autorId], references: [id])
+
+  @@map("avisos_gerais")
+}
+
+// ─── Notificações ─────────────────────────────────────────────────────────────
+
+model Notificacao {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  tipo     String
+  titulo   String
+  corpo    String?
+  lido     Boolean  @default(false)
+  link     String?
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notificacoes")
+}
+
+// ─── Push Subscriptions ───────────────────────────────────────────────────────
+
+model PushSubscription {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  endpoint String   @unique
+  p256dh   String   @map("p256dh")
+  auth     String
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+// ─── Procedimentos Padrão ─────────────────────────────────────────────────────
+
+model ProcedimentoPadrao {
+  id        String   @id @default(cuid())
+  titulo    String
+  descricao String?
+  autorId   String   @map("autor_id")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  autor   User                 @relation(fields: [autorId], references: [id])
+  imagens ProcedimentoImagem[]
+
+  @@map("procedimentos_padrao")
+}
+
+model ProcedimentoImagem {
+  id             String             @id @default(cuid())
+  procedimentoId String             @map("procedimento_id")
+  url            String
+  legenda        String?
+  ordem          Int                @default(0)
+
+  procedimento ProcedimentoPadrao @relation(fields: [procedimentoId], references: [id], onDelete: Cascade)
+
+  @@map("procedimento_imagens")
 }
 
 // ─── Aeronave ─────────────────────────────────────────────────────────────────
@@ -139,6 +218,7 @@ model Cartao {
   omDesignator String?    @map("om_designator")
   observacao   String?
   ordem        Int        @default(0)
+  extra        Boolean    @default(false)
 
   subsistema    Subsistema          @relation(fields: [subsistemaId], references: [id])
   inspecaoTipos CartaoInspecaoTipo[]

@@ -124,7 +124,7 @@ export default function SubitemCard({
           background: "rgba(0,0,0,0.2)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           {showLetra && (
             <span
               style={{
@@ -148,6 +148,32 @@ export default function SubitemCard({
           >
             {status === "CONCLUIDA" ? "CONCLUÍDO" : status === "INICIADA" ? "EM EXECUÇÃO" : "PENDENTE"}
           </span>
+
+          {/* Trigrama + hora visíveis no cabeçalho quando em execução ou concluído */}
+          {mecanicoTrigrama && status !== "PENDENTE" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{
+                background: status === "CONCLUIDA" ? "rgba(39,98,58,0.4)" : "rgba(180,83,9,0.4)",
+                border: `1px solid ${status === "CONCLUIDA" ? "rgba(74,222,128,0.4)" : "rgba(251,191,36,0.4)"}`,
+                borderRadius: 4,
+                padding: "1px 5px",
+                fontFamily: "monospace",
+                fontWeight: 800,
+                fontSize: "0.7rem",
+                color: status === "CONCLUIDA" ? "var(--green-text)" : "var(--yellow-text)",
+                letterSpacing: "0.08em",
+              }}>
+                {mecanicoTrigrama}
+              </span>
+              <span style={{ color: "var(--text-dim)", fontSize: "0.6rem" }}>
+                {status === "CONCLUIDA" && dataConclusao
+                  ? fmtHora(dataConclusao)
+                  : dataInicio
+                  ? fmtHora(dataInicio)
+                  : null}
+              </span>
+            </div>
+          )}
         </div>
 
         {podeEditar && (
@@ -547,6 +573,15 @@ function fmtDateTime(iso: string) {
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function fmtHora(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
   })
