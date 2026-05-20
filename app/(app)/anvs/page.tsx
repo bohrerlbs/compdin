@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
 import AvisosPanel from "../avisos-gerais/AvisosPanel"
+import CompdinPanel from "../compdin/CompdinPanel"
 
 export default async function HomePage() {
   const session = await auth()
@@ -11,7 +12,7 @@ export default async function HomePage() {
 
   const now = new Date()
 
-  const [anvs, avisos] = await Promise.all([
+  const [anvs, avisos, tarefas] = await Promise.all([
     prisma.anv.findMany({
       where: { ativo: true },
       orderBy: { matricula: "asc" },
@@ -29,6 +30,13 @@ export default async function HomePage() {
       },
       orderBy: { criadoEm: "desc" },
       include: { autor: { select: { trigrama: true, nome: true } } },
+    }),
+    prisma.tarefaCompdin.findMany({
+      orderBy: [{ status: "asc" }, { criadoEm: "desc" }],
+      include: {
+        autor: { select: { trigrama: true } },
+        responsavel: { select: { trigrama: true } },
+      },
     }),
   ])
 
@@ -99,6 +107,16 @@ export default async function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Divisor */}
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, var(--border), transparent)", margin: "1.5rem 0" }} />
+
+      {/* Tarefas COMPDIN */}
+      <CompdinPanel
+        tarefas={tarefas as Parameters<typeof CompdinPanel>[0]["tarefas"]}
+        userId={userId}
+        userRole={role}
+      />
     </div>
   )
 }

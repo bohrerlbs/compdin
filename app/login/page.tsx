@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -62,7 +61,8 @@ export default function LoginPage() {
         <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
           {/* Brasão */}
           <div style={{ margin: "0 auto 1.25rem", display: "flex", justifyContent: "center" }}>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/58.jpg"
               alt="5º/8º GAV Pantera"
               width={72}
