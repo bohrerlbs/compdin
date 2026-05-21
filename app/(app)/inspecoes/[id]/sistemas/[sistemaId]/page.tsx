@@ -63,7 +63,11 @@ export default async function SistemaPage({ params }: Props) {
           const concluidos = cartoesNaInspecao.reduce((s, c) =>
             s + c.execucoes.reduce((ss, e) =>
               ss + e.subitemStatuses.filter((st) => st.status === "CONCLUIDA").length, 0), 0)
+          const iniciados = cartoesNaInspecao.reduce((s, c) =>
+            s + c.execucoes.reduce((ss, e) =>
+              ss + e.subitemStatuses.filter((st) => st.status === "INICIADA").length, 0), 0)
           const pct = total > 0 ? Math.round((concluidos / total) * 100) : 0
+          const pctIniciado = total > 0 ? Math.round((iniciados / total) * 100) : 0
 
           return (
             <Link
@@ -78,6 +82,7 @@ export default async function SistemaPage({ params }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   {pct === 100 && <span className="text-green-400">✓</span>}
+                  {pct < 100 && iniciados > 0 && <span className="text-yellow-400 text-xs">▶</span>}
                   <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -87,11 +92,9 @@ export default async function SistemaPage({ params }: Props) {
                 <span>{concluidos}/{total} subitens</span>
                 <span>{pct}%</span>
               </div>
-              <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-blue-500"}`}
-                  style={{ width: `${pct}%` }}
-                />
+              <div className="h-1 bg-gray-800 rounded-full overflow-hidden flex">
+                <div className="h-full bg-green-500 transition-all" style={{ width: `${pct}%` }} />
+                <div className="h-full bg-yellow-500 transition-all" style={{ width: `${pctIniciado}%` }} />
               </div>
             </Link>
           )

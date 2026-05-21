@@ -159,11 +159,10 @@ export default async function RelatoriosPage({ searchParams }: Props) {
   if (dia) {
     const livroStatuses = await prisma.subitemStatus.findMany({
       where: {
-        status: "CONCLUIDA",
-        dataConclusao: {
-          gte: new Date(`${dia}T00:00:00`),
-          lte: new Date(`${dia}T23:59:59`),
-        },
+        OR: [
+          { status: "CONCLUIDA", dataConclusao: { gte: new Date(`${dia}T00:00:00`), lte: new Date(`${dia}T23:59:59`) } },
+          { status: "INICIADA",  dataInicio:    { gte: new Date(`${dia}T00:00:00`), lte: new Date(`${dia}T23:59:59`) } },
+        ],
       },
       include: {
         mecanico: { select: { trigrama: true } },
@@ -183,16 +182,15 @@ export default async function RelatoriosPage({ searchParams }: Props) {
           include: { inspecao: { include: { anv: { select: { matricula: true } }, } } },
         },
       },
-      orderBy: { dataConclusao: "asc" },
+      orderBy: [{ dataConclusao: "asc" }, { dataInicio: "asc" }],
     })
 
     const livroTarefas = await prisma.tarefaCompdin.findMany({
       where: {
-        status: "CONCLUIDA",
-        concluidoEm: {
-          gte: new Date(`${dia}T00:00:00`),
-          lte: new Date(`${dia}T23:59:59`),
-        },
+        OR: [
+          { status: "CONCLUIDA", concluidoEm: { gte: new Date(`${dia}T00:00:00`), lte: new Date(`${dia}T23:59:59`) } },
+          { status: "INICIADA",  iniciadoEm:  { gte: new Date(`${dia}T00:00:00`), lte: new Date(`${dia}T23:59:59`) } },
+        ],
       },
       include: {
         responsavel: { select: { trigrama: true } },
@@ -438,6 +436,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
 // ── Livro do Dia ──────────────────────────────────────────────────────────────
 
 type AnyStatus = {
+  status: string
   mecanicos: { mecanico: { trigrama: string } }[]
   mecanico: { trigrama: string } | null
   subitem: {
@@ -454,6 +453,7 @@ type AnyStatus = {
 type AnyTarefa = {
   id: string
   titulo: string
+  status: string
   mecanicos: { mecanico: { trigrama: string } }[]
   responsavel: { trigrama: string } | null
 }
@@ -491,19 +491,23 @@ function LivroView({ statuses, tarefas }: { statuses: AnyStatus[]; tarefas: AnyT
             <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>{fmt(sts[0].execucao.inspecao.tipo)}</span>
           </div>
           <div style={{ paddingLeft: 12, borderLeft: "2px solid var(--border-gold)" }}>
-            {sts.map((st, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < sts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
-                  <span style={{ color: "var(--gold)", fontFamily: "monospace", fontWeight: 600 }}>{st.subitem?.cartao?.codigo ?? "—"}</span>
-                  {" "}<span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>seção {st.subitem?.cartao?.subsistema?.sistema?.codigo}</span>
-                  {" · "}{st.subitem?.cartao?.nomePt}
-                  {" · passo "}<span style={{ fontFamily: "monospace" }}>{st.subitem?.letra}</span>
-                </span>
-                <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: "var(--green-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
-                  {mecStr(st.mecanicos, st.mecanico?.trigrama)}
-                </span>
-              </div>
-            ))}
+            {sts.map((st, i) => {
+              const concluido = st.status === "CONCLUIDA"
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < sts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                    <span style={{ marginRight: 4, fontSize: "0.6rem" }}>{concluido ? "✓" : "▶"}</span>
+                    <span style={{ color: "var(--gold)", fontFamily: "monospace", fontWeight: 600 }}>{st.subitem?.cartao?.codigo ?? "—"}</span>
+                    {" "}<span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>seção {st.subitem?.cartao?.subsistema?.sistema?.codigo}</span>
+                    {" · "}{st.subitem?.cartao?.nomePt}
+                    {" · passo "}<span style={{ fontFamily: "monospace" }}>{st.subitem?.letra}</span>
+                  </span>
+                  <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: concluido ? "var(--green-text)" : "var(--yellow-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
+                    {mecStr(st.mecanicos, st.mecanico?.trigrama)}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       ))}
@@ -514,14 +518,20 @@ function LivroView({ statuses, tarefas }: { statuses: AnyStatus[]; tarefas: AnyT
             <span style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "0.95rem", color: "var(--text-primary)" }}>COMPDIN</span>
           </div>
           <div style={{ paddingLeft: 12, borderLeft: "2px solid var(--border)" }}>
-            {tarefas.map((t, i) => (
-              <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < tarefas.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>{t.titulo}</span>
-                <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: "var(--green-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
-                  {mecStr(t.mecanicos, t.responsavel?.trigrama)}
-                </span>
-              </div>
-            ))}
+            {tarefas.map((t, i) => {
+              const concluido = t.status === "CONCLUIDA"
+              return (
+                <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < tarefas.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                  <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                    <span style={{ marginRight: 4, fontSize: "0.6rem" }}>{concluido ? "✓" : "▶"}</span>
+                    {t.titulo}
+                  </span>
+                  <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: concluido ? "var(--green-text)" : "var(--yellow-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
+                    {mecStr(t.mecanicos, t.responsavel?.trigrama)}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
