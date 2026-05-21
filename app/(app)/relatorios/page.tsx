@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Suspense } from "react"
+import { formatTipo } from "@/lib/inspecao"
 import FiltroPanel from "./FiltroPanel"
 
 interface Props {
@@ -273,9 +274,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
   )
 }
 
-function fmt(tipo: string) {
-  return tipo.replace("INSP_", "INSP-").replace("PMS_", "PMS-").replace("PMI_", "PMI-")
-}
+const fmt = formatTipo
 
 function fmtDur(min: number) {
   if (min === 0) return "—"

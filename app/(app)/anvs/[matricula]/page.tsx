@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
 import AbrirInspecaoButton from "./AbrirInspecaoButton"
+import { formatTipo } from "@/lib/inspecao"
 
 interface Props {
   params: Promise<{ matricula: string }>
@@ -50,8 +51,8 @@ export default async function AnvPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-white">{anv.matricula}</h1>
           <p className="text-gray-400 text-sm">{anv.modelo}</p>
         </div>
-        {(role === "INSPETOR" || role === "ADMIN") && (
-          <AbrirInspecaoButton anvId={anv.id} />
+        {(role === "INSPETOR" || role === "ADMIN" || role === "ENCARREGADO") && (
+          <AbrirInspecaoButton anvId={anv.id} role={role} />
         )}
       </div>
 
@@ -146,10 +147,3 @@ export default async function AnvPage({ params }: Props) {
   )
 }
 
-function formatTipo(tipo: string) {
-  return tipo
-    .replace("INSP_", "INSP-")
-    .replace("PMS_", "PMS-")
-    .replace("PMI_", "PMI-")
-    .replace(/_/g, "/")
-}

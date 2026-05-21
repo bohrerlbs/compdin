@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import AdicionarCartaoForm from "./AdicionarCartaoForm"
+import { formatTipo } from "@/lib/inspecao"
 
 interface Props {
   params: Promise<{ id: string; sistemaId: string; subsistemaId: string }>
@@ -162,6 +163,3 @@ export default async function SubsistemaPage({ params }: Props) {
   )
 }
 
-function formatTipo(tipo: string) {
-  return tipo.replace("INSP_", "INSP-").replace("PMS_", "PMS-").replace("PMI_", "PMI-").replace(/_/g, "/")
-}

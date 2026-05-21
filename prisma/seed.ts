@@ -21,7 +21,7 @@ const PMI960: InspecaoTipo[] = [InspecaoTipo.PMI_960]
 async function main() {
   console.log("🌱 Iniciando seed...")
 
-  // Limpa na ordem correta
+  // Limpa na ordem correta (respeitando FK constraints)
   await prisma.avisoLeitura.deleteMany()
   await prisma.avisoExecucao.deleteMany()
   await prisma.defeitoExecucao.deleteMany()
@@ -35,6 +35,13 @@ async function main() {
   await prisma.sistema.deleteMany()
   await prisma.inspecao.deleteMany()
   await prisma.anv.deleteMany()
+  // Limpa tabelas que referenciam usuários antes de deletar usuários
+  await prisma.tarefaCompdin.deleteMany()
+  await prisma.avisoGeral.deleteMany()
+  await prisma.notificacao.deleteMany()
+  await prisma.pushSubscription.deleteMany()
+  await prisma.procedimentoImagem.deleteMany()
+  await prisma.procedimentoPadrao.deleteMany()
   await prisma.user.deleteMany()
 
   // ─── Usuários padrão ──────────────────────────────────────────────────────
@@ -1671,6 +1678,386 @@ async function main() {
       { letra: "c", descricaoPt: "Inspecionar acoplamentos e flanges do eixo Sec I", descricaoEn: "Inspect Sec I shaft couplings and flanges" },
       { letra: "d", descricaoPt: "Inspecionar mancal de suporte e lubrificar se necessário", descricaoEn: "Inspect support bearing and lubricate if required" },
       { letra: "e", descricaoPt: "Reinstalar painéis de acesso", descricaoEn: "Reinstall access panels" },
+    ],
+  })
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // INSPEÇÕES ESPECIAIS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // ── EP1 — Inspeção Especial 1: Atmosfera Erosiva ─────────────────────────
+  // Cartão 900 — SERVICING (ROT) — Sistema 006, Área Swashplate
+  await criaCartao({
+    subsistemaId: sub006_swash.id,
+    codigo: "900-EP1",
+    nomeEn: "Servicing (ROT) — Erosive Environment (WP 0331)",
+    nomePt: "Servicing (ROT) — Ambiente Erosivo (WP 0331)",
+    tipo: TipoCartao.DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    wp: "WP 0331",
+    duracaoMin: 120,
+    qtdRecursos: 2,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 900,
+    inspecaoTipos: [InspecaoTipo.EP1_ERO],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Clean swashplate guide and spherical bearing (WP 0234).",
+        descricaoPt: "Limpar o guia do swashplate e o rolamento esférico (WP 0234).",
+        referencia: "WP 0234",
+      },
+      {
+        letra: "B",
+        descricaoEn: "Inspect swashplate guide and spherical bearing (WP 0755).",
+        descricaoPt: "Inspecionar o guia do swashplate e o rolamento esférico (WP 0755).",
+        referencia: "WP 0755",
+      },
+      {
+        letra: "C",
+        descricaoEn: "Clean main rotor blade pins (WP 0233).",
+        descricaoPt: "Limpar os pinos das pás do rotor principal (WP 0233).",
+        referencia: "WP 0233",
+      },
+    ],
+  })
+
+  // ── EP2 — Inspeção Especial 2: Pouso Duro ────────────────────────────────
+  // Cartão 913 — Tail Cone Section — Sistema 004
+  await criaCartao({
+    subsistemaId: sub004_shafts.id,
+    codigo: "913-EP2",
+    nomeEn: "Hard Landing — Inspect Tail Cone Drive Shafts (SERVICE)",
+    nomePt: "Pouso Duro — Inspecionar Eixos de Transmissão do Cone de Cauda",
+    tipo: TipoCartao.SERVICE,
+    publicacao: "EM 0013",
+    duracaoMin: 1440,
+    qtdRecursos: 3,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 913,
+    inspecaoTipos: [InspecaoTipo.EP2_POU],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Open tailcone drive shaft covers and inspect drive shaft for damage, cracks, and corrosion.",
+        descricaoPt: "Abrir as tampas dos eixos de transmissão do cone de cauda e inspecionar o eixo de transmissão quanto a danos, trincas e corrosão.",
+      },
+    ],
+  })
+
+  // Cartão 915 — MR Hub & Spindle — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_hub.id,
+    codigo: "915-EP2",
+    nomeEn: "Hard Landing — Inspect MR Hub Arm and Droop Stop Ears",
+    nomePt: "Pouso Duro — Inspecionar Braço do Hub do RM e Orelhas do Droop Stop",
+    tipo: TipoCartao.DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    duracaoMin: 60,
+    qtdRecursos: 1,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 915,
+    inspecaoTipos: [InspecaoTipo.EP2_POU],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Inspect inside of hub arm for signs of contact with spindle retention nut. If evidence of contact is found, replace spindles. Tag removed spindle \"DAMAGE OCCURRED DUE TO EXCESSIVE BLADE FLAPPING\". Inspect if damage exceeds repair limits.",
+        descricaoPt: "Inspecionar o interior do braço do hub quanto a sinais de contato com a porca de retenção do spindle. Se houver evidência de contato, substituir os spindles. Etiquetar o spindle removido: \"DANO OCORREU DEVIDO A FLAPPING EXCESSIVO DAS PÁS\". Inspecionar se os danos excedem os limites de reparo.",
+      },
+      {
+        letra: "B",
+        descricaoEn: "Inspect droop stop ears for cracks. If ear is cracked, replace elastomeric bearing assembly. Tag removed spindle \"DAMAGE OCCURRED DUE TO EXCESSIVE BLADE FLAPPING\".",
+        descricaoPt: "Inspecionar as orelhas dos batentes de droop quanto a trincas. Se a orelha estiver trincada, substituir o conjunto de rolamento elastomérico. Etiquetar o spindle removido: \"DANO OCORREU DEVIDO A FLAPPING EXCESSIVO DAS PÁS\".",
+      },
+    ],
+  })
+
+  // Cartão 918 — MR Blades — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_mrblades.id,
+    codigo: "918-EP2",
+    nomeEn: "Hard Landing — Inspect MR Blades for Blade Strike",
+    nomePt: "Pouso Duro — Inspecionar Pás do RM quanto a Contato",
+    tipo: TipoCartao.DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    duracaoMin: 60,
+    qtdRecursos: 1,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 918,
+    inspecaoTipos: [InspecaoTipo.EP2_POU],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "If main rotor blades contacted tailcone, pylon, or IR jammer with or without blade tip damage, inspect for signs of impact. Tag components \"OCCURRED DUE TO BLADE STRIKE\" and note what blade contacted.",
+        descricaoPt: "Se as pás do rotor principal contataram o cone de cauda, pylon ou bloqueador IR com ou sem dano à ponta da pá, inspecionar quanto a sinais de impacto. Etiquetar os componentes \"OCORREU DEVIDO A CONTATO DAS PÁS\" e registrar o que a pá contatou.",
+      },
+      {
+        letra: "B",
+        descricaoEn: "Inspect damaged hub. Tag damaged hub \"DAMAGE OCCURRED DUE TO EXCESSIVE BLADE FLAPPING\".",
+        descricaoPt: "Inspecionar o hub danificado. Etiquetar o hub danificado: \"DANO OCORREU DEVIDO A FLAPPING EXCESSIVO DAS PÁS\".",
+      },
+    ],
+  })
+
+  // Cartão 919 — Oil Cooler Drive Shaft — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_oilcooler.id,
+    codigo: "919-EP2",
+    nomeEn: "Hard Landing — Check Oil Cooler Drive Shaft Preloading",
+    nomePt: "Pouso Duro — Verificar Pré-carga do Eixo de Transmissão do Resfriador de Óleo",
+    tipo: TipoCartao.DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    duracaoMin: 960,
+    qtdRecursos: 2,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 919,
+    inspecaoTipos: [InspecaoTipo.EP2_POU],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Disconnect Section II tail rotor drive shaft near No 1 viscous damper.",
+        descricaoPt: "Desconectar o eixo de transmissão Seção II do rotor de cauda próximo ao amortecedor viscoso No 1.",
+      },
+      {
+        letra: "B",
+        descricaoEn: "Remove bolts attaching rear oil cooler support.",
+        descricaoPt: "Remover os parafusos de fixação do suporte traseiro do resfriador de óleo.",
+      },
+      {
+        letra: "C",
+        descricaoEn: "WARNING — CSI: Verification of preload is a critical characteristic. Using dial indicating scale, make sure that no more than 10 pounds of force is needed to align rear oil cooler support bolt holes with bolt holes in bearing flange.",
+        descricaoPt: "ATENÇÃO — CSI: Verificação de pré-carga é característica crítica. Usando escala com indicador de mostrador, certificar que não mais de 10 libras de força são necessárias para alinhar os furos do suporte traseiro do resfriador de óleo com os furos na flange do rolamento.",
+      },
+      {
+        letra: "D",
+        descricaoEn: "IF PRELOAD IS MORE THAN 10 POUNDS, REPLACE OIL COOLER.",
+        descricaoPt: "SE A PRÉ-CARGA FOR MAIOR QUE 10 LIBRAS, SUBSTITUIR O RESFRIADOR DE ÓLEO.",
+      },
+      {
+        letra: "E",
+        descricaoEn: "WARNING — CSI: Verification of torque is a critical characteristic. If preload is 10 pounds or less, install oil cooler rear support to bearing support with bolts, washers, shims and nuts. TORQUE NUTS TO 115–125 INCH-POUNDS. Follow shimming procedures in WP 0907.",
+        descricaoPt: "ATENÇÃO — CSI: Verificação de torque é característica crítica. Se a pré-carga for 10 libras ou menos, instalar o suporte traseiro do resfriador de óleo no suporte do rolamento com parafusos, arruelas, calços e porcas. TORQUEAR AS PORCAS PARA 115–125 INCH-POUNDS. Seguir os procedimentos de calçagem no WP 0907.",
+        referencia: "WP 0907",
+      },
+    ],
+  })
+
+  // ── EP3 — Inspeção Especial 3: Parada Brusca ─────────────────────────────
+  // Cartão 920 — Main Rotor Blades Sudden Stoppage — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_mrblades.id,
+    codigo: "920-EP3",
+    nomeEn: "Sudden Stoppage — Main Rotor Blades (SDI)",
+    nomePt: "Parada Brusca — Pás do Rotor Principal (SDI)",
+    tipo: TipoCartao.SPECIAL_DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    duracaoMin: 1440,
+    qtdRecursos: 3,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 920,
+    inspecaoTipos: [InspecaoTipo.EP3_PAR],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "If damage to blades is less than the accept/reject criteria, repair blades.",
+        descricaoPt: "Se o dano às pás for menor que o critério de aceitação/rejeição, reparar as pás.",
+      },
+      {
+        letra: "B",
+        descricaoEn: "Inspect droop stop ears for cracks. If ear is cracked, replace spindle. Tag removed spindle \"DAMAGE OCCURRED DUE TO EXCESSIVE BLADE FLAPPING\".",
+        descricaoPt: "Inspecionar as orelhas dos batentes de droop quanto a trincas. Se a orelha estiver trincada, substituir o spindle. Etiquetar o spindle removido: \"DANO OCORREU DEVIDO A FLAPPING EXCESSIVO DAS PÁS\".",
+      },
+      {
+        letra: "C",
+        descricaoEn: "If damage to blades includes severing blades inboard of tip cap, remove transmission and rotor head assembly and send to overhaul facility. Clearly tag all components \"BLADE DAMAGE OCCURRED WHILE ROTOR HEAD IN MOTION\". Also explain what the blades hit, if known, and how badly helicopter parts were damaged.",
+        descricaoPt: "Se o dano às pás incluir rompimento das pás na parte interna da tampa da ponta, remover a transmissão e o conjunto do cabeça do rotor e enviar para revisão. Etiquetar claramente todos os componentes: \"DANO ÀS PÁS OCORREU ENQUANTO O CABEÇA DO ROTOR ESTAVA EM MOVIMENTO\". Registrar o que as pás atingiram, se souber, e a extensão dos danos.",
+      },
+      {
+        letra: "D",
+        descricaoEn: "If damage to blades is greater than main rotor blade accept/reject criteria — remove blades and spindles and send to overhaul facility. Tag all components \"BLADE DAMAGE OCCURRED WHILE ROTOR HEAD IN MOTION\". Inspect blade attachment lugs and damper lugs on spindle for damage (crazing of paint on lugs is evidence of damage).",
+        descricaoPt: "Se o dano às pás for maior que o critério de aceitação/rejeição do rotor principal — remover as pás e spindles e enviar para revisão. Etiquetar todos os componentes: \"DANO ÀS PÁS OCORREU ENQUANTO O CABEÇA DO ROTOR ESTAVA EM MOVIMENTO\". Inspecionar as orelhas de fixação das pás e as orelhas do amortecedor no spindle quanto a danos (craquelamento da tinta nas orelhas é evidência de dano).",
+      },
+      {
+        letra: "E",
+        descricaoEn: "Replace hub if damage found. Clearly tag hub \"DAMAGE OCCURRED DUE TO EXCESSIVE BLADE FLAPPING\". Inspect dampers, control horns, pitch control rods, rotating swashplate and swashplate scissors for damage.",
+        descricaoPt: "Substituir o hub se dano for encontrado. Etiquetar claramente o hub: \"DANO OCORREU DEVIDO A FLAPPING EXCESSIVO DAS PÁS\". Inspecionar amortecedores, cornos de controle, hastes de controle de passo, swashplate giratório e tesouras do swashplate quanto a danos.",
+      },
+      {
+        letra: "F",
+        descricaoEn: "Inspect airframe attachment points for deformation and damage.",
+        descricaoPt: "Inspecionar os pontos de fixação da estrutura quanto a deformação e danos.",
+      },
+      {
+        letra: "G",
+        descricaoEn: "Visually inspect input drive shafts, tail drive shafts, oil cooler shaft area, all associated flexible couplings, bearings, and supports for cracks and distortion.",
+        descricaoPt: "Inspecionar visualmente os eixos de transmissão de entrada, eixos de transmissão de cauda, área do eixo do resfriador de óleo, todos os acoplamentos flexíveis associados, rolamentos e suportes quanto a trincas e distorção.",
+      },
+      {
+        letra: "H",
+        descricaoEn: "If damage to blades is greater than main rotor accept/reject trim tab, abrasion strip, and balance block and does not include damage to primary structural components, remove blades and send to approved overhaul facility.",
+        descricaoPt: "Se o dano às pás for maior que o critério de aceitação/rejeição do aba de trim, tira abrasiva e bloco de equilíbrio e não incluir dano aos componentes estruturais primários, remover as pás e enviar para revisão.",
+      },
+      {
+        letra: "I",
+        descricaoEn: "If damage to tip cap is greater than tip cap accept/reject criteria (tip block, Rosan inserts, tip weights, weight studs, tip rib), evaluate based on repairability of these components.",
+        descricaoPt: "Se o dano à tampa da ponta for maior que o critério de aceitação/rejeição da tampa da ponta (bloco da ponta, insertos Rosan, pesos da ponta, pinos de peso, nervura da ponta), avaliar com base na capacidade de reparo desses componentes.",
+      },
+    ],
+  })
+
+  // Cartão 922 — Tail Rotor Blades Sudden Stoppage — Sistema 005
+  await criaCartao({
+    subsistemaId: sub005_trblades.id,
+    codigo: "922-EP3",
+    nomeEn: "Sudden Stoppage — Tail Rotor Blades (SDI)",
+    nomePt: "Parada Brusca — Pás do Rotor de Cauda (SDI)",
+    tipo: TipoCartao.SPECIAL_DETAILED_INSPECTION,
+    publicacao: "EM 0013",
+    duracaoMin: 960,
+    qtdRecursos: 2,
+    omDesignator: "ALA 4",
+    observacao: "Itens com requisitos mínimos. A Inspetoria pode acrescentar tarefas via Special/Conditional Inspections do EM 0013.",
+    ordem: 922,
+    inspecaoTipos: [InspecaoTipo.EP3_PAR],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "If damage to blades is less than tail rotor blade accept/reject criteria — inspect all four tail gear box mounting lugs. Visually inspect intermediate gear box mounting, all drive shaftings, flexible couplings, drive shaft bearings, oil cooler axial fan, and drive shaft supports for cracks and distortion. Perform oil cooler spline wear inspection.",
+        descricaoPt: "Se o dano às pás for menor que o critério de aceitação/rejeição das pás do rotor de cauda — inspecionar as quatro orelhas de montagem da caixa de engrenagens de cauda. Inspecionar visualmente a montagem da caixa de engrenagens intermediária, todos os eixos de transmissão, acoplamentos flexíveis, rolamentos dos eixos, ventilador axial do resfriador de óleo e suportes dos eixos quanto a trincas e distorção. Realizar inspeção de desgaste do spline do resfriador de óleo.",
+      },
+      {
+        letra: "B",
+        descricaoEn: "If damage to blades is greater than tail rotor blade accept/reject criteria (dents or gouges in leading edge over 1/4-inch deep, or damage to attachment block) — remove pitch beam, pitch change links, blades, retention plates, tail gear box, intermediate gear box, oil cooler axial fan, and all tail drive shaft assemblies. Send to overhaul with tag \"DAMAGE OCCURRED WHILE TAIL ROTOR IN MOTION\".",
+        descricaoPt: "Se o dano às pás for maior que o critério de aceitação/rejeição das pás do rotor de cauda (amassados ou sulcos na borda de ataque com mais de 1/4 de polegada de profundidade, ou dano no bloco de fixação) — remover o pitch beam, links de mudança de passo, pás, placas de retenção, caixa de engrenagens de cauda, caixa de engrenagens intermediária, ventilador axial do resfriador de óleo e todos os conjuntos de eixo de transmissão de cauda. Enviar para revisão com etiqueta \"DANO OCORREU ENQUANTO O ROTOR DE CAUDA ESTAVA EM MOVIMENTO\".",
+      },
+      {
+        letra: "C",
+        descricaoEn: "Visually inspect tail pylon for possible structural damage such as loose rivets, cracks, etc. Inspect gear box attachment points for deformation and other signs of damage.",
+        descricaoPt: "Inspecionar visualmente o pylon de cauda quanto a possíveis danos estruturais como rebites soltos, trincas, etc. Inspecionar os pontos de fixação da caixa de engrenagens quanto a deformação e outros sinais de dano.",
+      },
+      {
+        letra: "D",
+        descricaoEn: "If damage to blades is greater than tail rotor blade accept/reject criteria in Region A, B, or C — inspect all four tail gear box mounting lugs, intermediate gear box mounting, drive shafting, flexible couplings and supports. Perform oil cooler spline wear inspection. Remove blades and send to overhaul facility with tag \"DAMAGE OCCURRED WHILE TAIL ROTOR IN MOTION\".",
+        descricaoPt: "Se o dano às pás for maior que o critério de aceitação/rejeição nas Regiões A, B ou C — inspecionar as quatro orelhas de montagem da caixa de engrenagens de cauda, montagem da caixa intermediária, eixos de transmissão, acoplamentos flexíveis e suportes. Realizar inspeção de desgaste do spline do resfriador de óleo. Remover as pás e enviar para revisão com etiqueta \"DANO OCORREU ENQUANTO O ROTOR DE CAUDA ESTAVA EM MOVIMENTO\".",
+      },
+    ],
+  })
+
+  // ── EP5 — Inspeção PRP Atmosfera Erosiva ──────────────────────────────────
+  // Cartão 960 — Tail Rotor Pylon — Sistema 005
+  await criaCartao({
+    subsistemaId: sub005_pylon.id,
+    codigo: "960-EP5",
+    nomeEn: "PRP Erosive Environment — De-Ice Tail Rotor (Lubrification)",
+    nomePt: "PRP Atmosfera Erosiva — De-Ice do Rotor de Cauda (Lubrificação)",
+    tipo: TipoCartao.LUBRIFICATION,
+    publicacao: "EM 0013",
+    duracaoMin: 30,
+    qtdRecursos: 1,
+    omDesignator: "PAMASP",
+    ordem: 960,
+    inspecaoTipos: [InspecaoTipo.EP5_PRP],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Apply protective paint on the outer surface of screws and fixed nut of the tail rotor de-ice.",
+        descricaoPt: "Aplicar pintura protetora na superfície externa dos screws e porca fixa do de-ice do rotor de cauda.",
+      },
+    ],
+  })
+
+  // Cartão 961 — Bifilar — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_bifilar.id,
+    codigo: "961-EP5",
+    nomeEn: "PRP Erosive Environment — Clean and Lubricate Bifilar",
+    nomePt: "PRP Atmosfera Erosiva — Limpar e Lubrificar o Bifilar",
+    tipo: TipoCartao.LUBRIFICATION,
+    publicacao: "EM 0013",
+    duracaoMin: 20,
+    qtdRecursos: 1,
+    omDesignator: "PAMASP",
+    ordem: 961,
+    inspecaoTipos: [InspecaoTipo.EP5_PRP],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Clean and lubricate the bifilar (vibration absorber).",
+        descricaoPt: "Limpe e lubrifique o bifilar (absorvedor de vibração).",
+      },
+    ],
+  })
+
+  // Cartão 962 — Pitch Control — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_pitch.id,
+    codigo: "962-EP5",
+    nomeEn: "PRP Erosive Environment — Lubricate Pitch Beam Retaining Nut",
+    nomePt: "PRP Atmosfera Erosiva — Lubrificar Porca de Retenção do Pitch Beam",
+    tipo: TipoCartao.LUBRIFICATION,
+    publicacao: "EM 0013",
+    duracaoMin: 20,
+    qtdRecursos: 1,
+    omDesignator: "PAMASP",
+    observacao: "NÃO MISTURE OS COMPOSTOS — USE O QUE JÁ ESTAVA NAS PEÇAS.",
+    ordem: 962,
+    inspecaoTipos: [InspecaoTipo.EP5_PRP],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Lubricate the outer surface of the pitch beam retaining nut and washer. NOTE: DO NOT MIX COMPOUNDS — USE WHATEVER WAS ALREADY ON THE PARTS.",
+        descricaoPt: "Lubrificar a superfície externa da porca de retenção do pitch beam e da arruela. NOTA: NÃO MISTURE OS COMPOSTOS — USE O QUE JÁ ESTAVA NAS PEÇAS.",
+      },
+    ],
+  })
+
+  // Cartão 963 — Pitch Control — Sistema 006
+  await criaCartao({
+    subsistemaId: sub006_pitch.id,
+    codigo: "963-EP5",
+    nomeEn: "PRP Erosive Environment — Lubricate Outboard Retention Plate Bolts",
+    nomePt: "PRP Atmosfera Erosiva — Lubrificar Parafusos da Placa de Retenção Externo",
+    tipo: TipoCartao.LUBRIFICATION,
+    publicacao: "EM 0013",
+    duracaoMin: 20,
+    qtdRecursos: 1,
+    omDesignator: "PAMASP",
+    ordem: 963,
+    inspecaoTipos: [InspecaoTipo.EP5_PRP],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Lubricate the outer surface of the bolts and nuts of the outboard retention plate.",
+        descricaoPt: "Lubrificar a superfície externa dos bolts e nuts da placa de retenção externa (outboard retention plate).",
+      },
+    ],
+  })
+
+  // Cartão 964 — Tail Cone Drive Shafts — Sistema 004
+  await criaCartao({
+    subsistemaId: sub004_shafts.id,
+    codigo: "964-EP5",
+    nomeEn: "PRP Erosive Environment — Lubricate Tail Rotor Drive Shaft Couplings",
+    nomePt: "PRP Atmosfera Erosiva — Lubrificar Acoplamentos dos Eixos do Rotor de Cauda",
+    tipo: TipoCartao.LUBRIFICATION,
+    publicacao: "EM 0013",
+    duracaoMin: 30,
+    qtdRecursos: 1,
+    omDesignator: "PAMASP",
+    ordem: 964,
+    inspecaoTipos: [InspecaoTipo.EP5_PRP],
+    subitens: [
+      {
+        letra: "A",
+        descricaoEn: "Lubricate the couplings and screws of the tail rotor drive shafts.",
+        descricaoPt: "Lubrificar os couplings e os parafusos dos eixos de acionamento do rotor de cauda.",
+      },
     ],
   })
 

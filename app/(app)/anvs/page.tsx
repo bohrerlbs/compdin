@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { auth } from "@/auth"
 import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
+import { formatTipo } from "@/lib/inspecao"
 import AvisosPanel from "../avisos-gerais/AvisosPanel"
 import CompdinPanel from "../compdin/CompdinPanel"
 
@@ -121,10 +122,3 @@ export default async function HomePage() {
   )
 }
 
-function formatTipo(tipo: string) {
-  return tipo
-    .replace("INSP_", "INSP-")
-    .replace("PMS_", "PMS-")
-    .replace("PMI_", "PMI-")
-    .replace(/_/g, "/")
-}

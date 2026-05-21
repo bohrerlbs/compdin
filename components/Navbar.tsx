@@ -106,6 +106,7 @@ export default function Navbar({ user }: Props) {
             {canReport && (
               <>
                 <Link href="/relatorios" style={linkStyle}>RELATÓRIOS</Link>
+                <Link href="/admin/catalogo" style={linkStyle}>CATÁLOGO</Link>
                 <Link href="/admin/usuarios" style={linkStyle}>USUÁRIOS</Link>
                 <Link href="/admin/aeronaves" style={linkStyle}>AERONAVES</Link>
               </>
@@ -206,6 +207,9 @@ export default function Navbar({ user }: Props) {
                   <>
                     <Link href="/relatorios" style={dropLinkStyle} onClick={() => setMenuOpen(false)}>
                       RELATÓRIOS
+                    </Link>
+                    <Link href="/admin/catalogo" style={dropLinkStyle} onClick={() => setMenuOpen(false)}>
+                      CATÁLOGO
                     </Link>
                     <Link href="/admin/usuarios" style={dropLinkStyle} onClick={() => setMenuOpen(false)}>
                       USUÁRIOS

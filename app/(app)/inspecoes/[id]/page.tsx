@@ -3,6 +3,8 @@ import { auth } from "@/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import FecharInspecaoButton from "./FecharInspecaoButton"
+import AdicionarCartaoCatalogoButton from "./AdicionarCartaoCatalogoButton"
+import { formatTipo } from "@/lib/inspecao"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -142,18 +144,20 @@ export default async function InspecaoPage({ params }: Props) {
         })}
       </div>
 
+      {/* Adicionar cartão do catálogo (Inspeção Especial ou privilegiados em qualquer inspeção) */}
+      {inspecao.status === "ABERTA" && (role === "INSPETOR" || role === "ADMIN" || role === "ENCARREGADO") && (
+        <div className="mb-4">
+          <AdicionarCartaoCatalogoButton
+            inspecaoId={id}
+            isEspecial={inspecao.tipo === "INSP_ESPECIAL"}
+          />
+        </div>
+      )}
+
       {/* Fechar inspeção */}
       {inspecao.status === "ABERTA" && (role === "INSPETOR" || role === "ADMIN") && (
         <FecharInspecaoButton inspecaoId={id} />
       )}
     </div>
   )
-}
-
-function formatTipo(tipo: string) {
-  return tipo
-    .replace("INSP_", "INSP-")
-    .replace("PMS_", "PMS-")
-    .replace("PMI_", "PMI-")
-    .replace(/_/g, "/")
 }

@@ -8,47 +8,55 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Não autorizado." }, { status: 401 })
 
   const { role, id: userId } = session.user
-  if (role !== "INSPETOR" && role !== "ADMIN") {
-    return NextResponse.json({ error: "Sem permissão." }, { status: 403 })
-  }
-
   const { anvId, tipo } = await req.json()
+
   if (!anvId || !tipo) {
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
   }
 
-  // Verifica se já existe inspeção aberta do mesmo tipo
-  const existente = await prisma.inspecao.findFirst({
-    where: { anvId, tipo: tipo as InspecaoTipo, status: InspecaoStatus.ABERTA },
-  })
-  if (existente) {
-    return NextResponse.json({ error: "Já existe uma inspeção desse tipo aberta para esta ANV." }, { status: 409 })
+  // INSP_ESPECIAL: inspetor, admin e encarregado podem abrir
+  // Demais tipos: apenas inspetor e admin
+  const isEspecial = tipo === "INSP_ESPECIAL"
+  const canOpen = role === "INSPETOR" || role === "ADMIN" || (isEspecial && role === "ENCARREGADO")
+  if (!canOpen) {
+    return NextResponse.json({ error: "Sem permissão." }, { status: 403 })
   }
 
-  // Busca os cartões do tipo de inspeção
+  // Para INSP_ESPECIAL, permite múltiplas abertas (cada uma é única por ocasião)
+  if (!isEspecial) {
+    const existente = await prisma.inspecao.findFirst({
+      where: { anvId, tipo: tipo as InspecaoTipo, status: InspecaoStatus.ABERTA },
+    })
+    if (existente) {
+      return NextResponse.json({ error: "Já existe uma inspeção desse tipo aberta para esta ANV." }, { status: 409 })
+    }
+  }
+
+  // Para INSP_ESPECIAL: cria sem cartões (o inspetor adiciona depois)
+  if (isEspecial) {
+    const inspecao = await prisma.inspecao.create({
+      data: { anvId, tipo: "INSP_ESPECIAL", abertaPorId: userId },
+    })
+    return NextResponse.json({ id: inspecao.id }, { status: 201 })
+  }
+
+  // Para os demais tipos: pré-popula com os cartões do catálogo
   const cartoes = await prisma.cartaoInspecaoTipo.findMany({
     where: { inspecaoTipo: tipo as InspecaoTipo },
     select: { cartaoId: true },
   })
 
-  // Cria a inspeção com execuções para cada cartão
   const inspecao = await prisma.inspecao.create({
     data: {
       anvId,
       tipo: tipo as InspecaoTipo,
       abertaPorId: userId,
       execucoes: {
-        create: cartoes.map((c) => ({
-          cartaoId: c.cartaoId,
-          subitemStatuses: {
-            create: [], // criados ao acessar o cartão pela primeira vez
-          },
-        })),
+        create: cartoes.map((c) => ({ cartaoId: c.cartaoId })),
       },
     },
   })
 
-  // Cria os SubitemStatus para todos os subitens dos cartões
   const execucoes = await prisma.execucaoCartao.findMany({
     where: { inspecaoId: inspecao.id },
     include: { cartao: { include: { subitens: true } } },

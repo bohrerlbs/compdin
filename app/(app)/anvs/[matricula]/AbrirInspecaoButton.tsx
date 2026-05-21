@@ -3,21 +3,15 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { InspecaoTipo } from "@prisma/client"
+import { TIPOS_INSPECAO_AGRUPADOS } from "@/lib/inspecao"
 
-const TIPOS_INSPECAO: { value: InspecaoTipo; label: string }[] = [
-  { value: "INSP_30D", label: "INSP-30D (Calendário 30 dias)" },
-  { value: "INSP_6M", label: "INSP-6M (Calendário 6 meses)" },
-  { value: "INSP_90D", label: "INSP-90D (Calendário 90 dias)" },
-  { value: "INSP_12M", label: "INSP-12M (Calendário 12 meses)" },
-  { value: "INSP_24M", label: "INSP-24M (Calendário 24 meses)" },
-  { value: "PMS_40", label: "PMS-40H (Periódica 40 horas)" },
-  { value: "PMS_120", label: "PMS-120H (Periódica 120 horas)" },
-  { value: "PMS_360", label: "PMS-360H (Periódica 360 horas)" },
-  { value: "PMI_480", label: "PMI-480H (Maior 480 horas)" },
-  { value: "PMI_960", label: "PMI-960H (Maior 960 horas)" },
-]
-
-export default function AbrirInspecaoButton({ anvId }: { anvId: string }) {
+export default function AbrirInspecaoButton({
+  anvId,
+  role,
+}: {
+  anvId: string
+  role: string
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [tipo, setTipo] = useState<InspecaoTipo>("PMS_40")
@@ -38,7 +32,9 @@ export default function AbrirInspecaoButton({ anvId }: { anvId: string }) {
         setError(data.error ?? "Erro ao abrir inspeção.")
         return
       }
+      const { id } = await res.json()
       setOpen(false)
+      router.push(`/inspecoes/${id}`)
       router.refresh()
     } catch {
       setError("Erro de conexão.")
@@ -47,10 +43,21 @@ export default function AbrirInspecaoButton({ anvId }: { anvId: string }) {
     }
   }
 
+  // ENCARREGADO só pode abrir INSP_ESPECIAL
+  const grupos = role === "ENCARREGADO"
+    ? TIPOS_INSPECAO_AGRUPADOS.filter((g) => g.grupo === "Inspeções Especiais").map((g) => ({
+        ...g,
+        tipos: g.tipos.filter((t) => t.value === "INSP_ESPECIAL"),
+      }))
+    : TIPOS_INSPECAO_AGRUPADOS
+
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (role === "ENCARREGADO") setTipo("INSP_ESPECIAL")
+          setOpen(true)
+        }}
         className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
       >
         + Abrir Inspeção
@@ -67,16 +74,26 @@ export default function AbrirInspecaoButton({ anvId }: { anvId: string }) {
               onChange={(e) => setTipo(e.target.value as InspecaoTipo)}
               className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {TIPOS_INSPECAO.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+              {grupos.map((grupo) => (
+                <optgroup key={grupo.grupo} label={grupo.grupo}>
+                  {grupo.tipos.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
+
+            {tipo === "INSP_ESPECIAL" && (
+              <p className="text-yellow-400 text-xs mb-3 bg-yellow-900/20 border border-yellow-800 rounded-lg px-3 py-2">
+                Inspeção Especial abre sem cartões. O inspetor ou encarregado adiciona sistemas, subsistemas e cartões conforme necessário.
+              </p>
+            )}
 
             {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
 
             <div className="flex gap-3">
               <button
-                onClick={() => setOpen(false)}
+                onClick={() => { setOpen(false); setError("") }}
                 className="flex-1 text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 py-2.5 rounded-lg transition-colors"
               >
                 Cancelar
