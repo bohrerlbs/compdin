@@ -57,6 +57,24 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     where.execucaoId = { in: execIds }
   }
 
+  // ── Tarefas COMPDIN ──────────────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tarefasWhere: any = {}
+  if (di || df) {
+    tarefasWhere.criadoEm = {}
+    if (di) tarefasWhere.criadoEm.gte = new Date(`${di}T00:00:00`)
+    if (df) tarefasWhere.criadoEm.lte = new Date(`${df}T23:59:59`)
+  }
+  const tarefasCompdin = await prisma.tarefaCompdin.findMany({
+    where: tarefasWhere,
+    include: {
+      autor: { select: { trigrama: true, nome: true } },
+      responsavel: { select: { trigrama: true, nome: true } },
+    },
+    orderBy: { criadoEm: "desc" },
+    take: 100,
+  })
+
   // ── Query principal ───────────────────────────────────────────────────────
   const statuses = await prisma.subitemStatus.findMany({
     where,
@@ -219,6 +237,64 @@ export default async function RelatoriosPage({ searchParams }: Props) {
               ))}
               {mecanicos.length === 0 && (
                 <tr><td colSpan={5} style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-dim)", fontSize: "0.8rem" }}>Nenhuma tarefa no período/filtro selecionado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Tarefas COMPDIN */}
+      <section style={{ marginBottom: "2rem" }}>
+        <h2 style={{ fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--text-dim)", fontWeight: 700, margin: "0 0 0.75rem" }}>
+          TAREFAS COMPDIN {temFiltro ? "(FILTRADO)" : `(${tarefasCompdin.length})`}
+        </h2>
+        <div className="card-mil" style={{ overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                {["CRIADA EM", "AUTOR", "RESPONSÁVEL", "STATUS", "INICIADA", "CONCLUÍDA", "TAREFA"].map(h => (
+                  <th key={h} style={{ padding: "0.5rem 0.6rem", textAlign: "left", fontSize: "0.55rem", letterSpacing: "0.08em", color: "var(--text-dim)", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tarefasCompdin.map((t, i) => {
+                const statusCfg = {
+                  PENDENTE: { color: "var(--text-dim)", label: "PENDENTE" },
+                  INICIADA: { color: "var(--yellow-text)", label: "INICIADA" },
+                  CONCLUIDA: { color: "var(--green-text)", label: "CONCLUÍDA" },
+                }[t.status]
+                return (
+                  <tr key={t.id} style={{ borderBottom: i < tarefasCompdin.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                      {new Date(t.criadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem" }}>
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: "var(--gold-bright)" }}>{t.autor.trigrama}</span>
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem" }}>
+                      {t.responsavel
+                        ? <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: t.status === "CONCLUIDA" ? "var(--green-text)" : "var(--yellow-text)" }}>{t.responsavel.trigrama}</span>
+                        : <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>—</span>
+                      }
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem" }}>
+                      <span style={{ fontSize: "0.6rem", fontWeight: 700, color: statusCfg.color }}>{statusCfg.label}</span>
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--yellow-text)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                      {t.iniciadoEm ? new Date(t.iniciadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—"}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--green-text)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                      {t.concluidoEm ? new Date(t.concluidoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—"}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-primary)", fontSize: "0.72rem", maxWidth: 200 }}>
+                      <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.titulo}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+              {tarefasCompdin.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-dim)", fontSize: "0.8rem" }}>Nenhuma tarefa no período selecionado.</td></tr>
               )}
             </tbody>
           </table>

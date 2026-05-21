@@ -21,6 +21,7 @@ export async function criarTarefa(titulo: string, descricao?: string): Promise<{
       },
     })
     revalidatePath("/anvs")
+    revalidatePath("/compdin")
     return {}
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao criar tarefa." }
@@ -57,6 +58,7 @@ export async function atualizarStatusTarefa(
       },
     })
     revalidatePath("/anvs")
+    revalidatePath("/compdin")
     return {}
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao atualizar tarefa." }
@@ -84,6 +86,7 @@ export async function editarTarefa(
       data: { titulo: titulo.trim(), descricao: descricao?.trim() || null },
     })
     revalidatePath("/anvs")
+    revalidatePath("/compdin")
     return {}
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao editar tarefa." }
@@ -103,6 +106,7 @@ export async function deletarTarefa(id: string): Promise<{ error?: string }> {
 
     await prisma.tarefaCompdin.delete({ where: { id } })
     revalidatePath("/anvs")
+    revalidatePath("/compdin")
     return {}
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Erro ao excluir tarefa." }

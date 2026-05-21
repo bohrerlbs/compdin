@@ -4,7 +4,6 @@ import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
 import { formatTipo } from "@/lib/inspecao"
 import AvisosPanel from "../avisos-gerais/AvisosPanel"
-import CompdinPanel from "../compdin/CompdinPanel"
 
 export default async function HomePage() {
   const session = await auth()
@@ -13,7 +12,7 @@ export default async function HomePage() {
 
   const now = new Date()
 
-  const [anvs, avisos, tarefas] = await Promise.all([
+  const [anvs, avisos, ativasCount] = await Promise.all([
     prisma.anv.findMany({
       where: { ativo: true },
       orderBy: { matricula: "asc" },
@@ -32,12 +31,8 @@ export default async function HomePage() {
       orderBy: { criadoEm: "desc" },
       include: { autor: { select: { trigrama: true, nome: true } } },
     }),
-    prisma.tarefaCompdin.findMany({
-      orderBy: [{ status: "asc" }, { criadoEm: "desc" }],
-      include: {
-        autor: { select: { trigrama: true } },
-        responsavel: { select: { trigrama: true } },
-      },
+    prisma.tarefaCompdin.count({
+      where: { status: { in: ["PENDENTE", "INICIADA"] } },
     }),
   ])
 
@@ -112,12 +107,38 @@ export default async function HomePage() {
       {/* Divisor */}
       <div style={{ height: 1, background: "linear-gradient(90deg, transparent, var(--border), transparent)", margin: "1.5rem 0" }} />
 
-      {/* Tarefas COMPDIN */}
-      <CompdinPanel
-        tarefas={tarefas as Parameters<typeof CompdinPanel>[0]["tarefas"]}
-        userId={userId}
-        userRole={role}
-      />
+      {/* Seção COMPDIN */}
+      <h1 className="text-xl font-bold text-white mb-3">Seção</h1>
+      <Link
+        href="/compdin"
+        className="block bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-700 rounded-xl p-4 transition-colors"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-white font-bold text-lg">COMPDIN</span>
+              <span className="text-gray-500 text-sm">5/8 GAV Pantera</span>
+            </div>
+            {ativasCount > 0 ? (
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <span className="inline-flex items-center text-xs bg-yellow-900/50 text-yellow-400 border border-yellow-800 px-2 py-0.5 rounded-full">
+                  {ativasCount} tarefa{ativasCount !== 1 ? "s" : ""} ativa{ativasCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-xs mt-1">Sem tarefas ativas</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {ativasCount > 0 && (
+              <div className="w-2.5 h-2.5 bg-yellow-400 rounded-full animate-pulse" />
+            )}
+            <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </div>
+      </Link>
     </div>
   )
 }
