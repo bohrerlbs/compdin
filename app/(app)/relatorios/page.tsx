@@ -84,7 +84,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     where,
     include: {
       mecanico: { select: { nome: true, trigrama: true, matricula: true } },
-      mecanicos: { include: { mecanico: { select: { trigrama: true } } } },
+      mecanicos: { include: { mecanico: { select: { trigrama: true, nome: true } } } },
       subitem: {
         select: {
           letra: true,
@@ -116,20 +116,27 @@ export default async function RelatoriosPage({ searchParams }: Props) {
 
   const porMecanico = new Map<string, MecResumo>()
   for (const st of statuses) {
-    if (!st.mecanico) continue
-    const key = st.mecanico.trigrama
-    const prev = porMecanico.get(key) ?? {
-      trigrama: st.mecanico.trigrama, nome: st.mecanico.nome, matricula: st.mecanico.matricula,
-      totalConcluidos: 0, totalMinutos: 0, inspecoes: new Set<string>(),
+    // Use junction table when available; fall back to legacy single-mechanic field
+    const mecList = st.mecanicos.length > 0
+      ? st.mecanicos.map(m => ({ trigrama: m.mecanico.trigrama, nome: m.mecanico.nome, matricula: "" }))
+      : st.mecanico
+      ? [{ trigrama: st.mecanico.trigrama, nome: st.mecanico.nome, matricula: st.mecanico.matricula }]
+      : []
+
+    for (const mec of mecList) {
+      const prev = porMecanico.get(mec.trigrama) ?? {
+        trigrama: mec.trigrama, nome: mec.nome, matricula: mec.matricula,
+        totalConcluidos: 0, totalMinutos: 0, inspecoes: new Set<string>(),
+      }
+      prev.totalConcluidos++
+      if (st.dataInicio && st.dataConclusao) {
+        prev.totalMinutos += Math.round((st.dataConclusao.getTime() - st.dataInicio.getTime()) / 60000)
+      } else if (st.subitem?.cartao?.duracaoMin) {
+        prev.totalMinutos += Math.round(st.subitem.cartao.duracaoMin / 4)
+      }
+      prev.inspecoes.add(st.execucao.inspecaoId)
+      porMecanico.set(mec.trigrama, prev)
     }
-    prev.totalConcluidos++
-    if (st.dataInicio && st.dataConclusao) {
-      prev.totalMinutos += Math.round((st.dataConclusao.getTime() - st.dataInicio.getTime()) / 60000)
-    } else if (st.subitem?.cartao?.duracaoMin) {
-      prev.totalMinutos += Math.round(st.subitem.cartao.duracaoMin / 4)
-    }
-    prev.inspecoes.add(st.execucao.inspecaoId)
-    porMecanico.set(key, prev)
   }
   const mecanicos = Array.from(porMecanico.values()).sort((a, b) => b.totalConcluidos - a.totalConcluidos)
 
