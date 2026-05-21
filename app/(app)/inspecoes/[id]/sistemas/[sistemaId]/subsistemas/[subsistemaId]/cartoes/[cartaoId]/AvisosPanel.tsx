@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react"
 import { enviarAviso, marcarAvisosLidos, editarAviso, deletarAviso } from "./actions"
+import { fmtDateTime } from "@/lib/fmt"
 
 interface Aviso {
   id: string
@@ -312,12 +313,3 @@ export default function AvisosPanel({ execucaoId, avisos: initialAvisos, podeAvi
   )
 }
 
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}

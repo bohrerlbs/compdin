@@ -6,6 +6,7 @@ import SubitemCard from "./SubitemCard"
 import AvisosPanel from "./AvisosPanel"
 import DefeitosPanel from "./DefeitosPanel"
 import AdminCartaoEditor from "./AdminCartaoEditor"
+import { fmtDate } from "@/lib/fmt"
 
 interface Props {
   params: Promise<{ id: string; sistemaId: string; subsistemaId: string; cartaoId: string }>
@@ -253,7 +254,7 @@ export default async function CartaoPage({ params }: Props) {
               <span style={{ color: "var(--gold-bright)", fontFamily: "monospace", fontWeight: 700 }}>
                 {execucao.inspecionador?.trigrama}
               </span>
-              {" "}em {new Date(execucao.inspecionadoEm).toLocaleDateString("pt-BR")}
+              {" "}em {fmtDate(execucao.inspecionadoEm)}
             </span>
           </div>
         )}

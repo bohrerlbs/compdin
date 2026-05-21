@@ -29,6 +29,20 @@ export default function CancelarInspecaoButton({
     router.refresh()
   }
 
+  async function handleExcluir() {
+    setLoading(true)
+    setError("")
+    const res = await fetch(`/api/inspecoes/${inspecaoId}/cancelar`, { method: "DELETE" })
+    setLoading(false)
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error ?? "Erro ao excluir.")
+      return
+    }
+    router.push(`/anvs/${anvMatricula}`)
+    router.refresh()
+  }
+
   if (!confirm) {
     return (
       <button
@@ -42,12 +56,12 @@ export default function CancelarInspecaoButton({
 
   return (
     <div className="bg-gray-900 border border-red-900 rounded-xl p-4">
-      <p className="text-white text-sm mb-1 text-center font-medium">Cancelar esta inspeção?</p>
+      <p className="text-white text-sm mb-1 text-center font-medium">O que deseja fazer com esta inspeção?</p>
       <p className="text-gray-500 text-xs text-center mb-4">
-        A inspeção ficará marcada como cancelada e não poderá ser reaberta.
+        Cancelar mantém o registro marcado como cancelado. Excluir remove permanentemente todos os dados.
       </p>
       {error && <p className="text-red-400 text-xs text-center mb-3">{error}</p>}
-      <div className="flex gap-3">
+      <div className="flex gap-3 mb-2">
         <button
           onClick={() => { setConfirm(false); setError("") }}
           className="flex-1 text-sm text-gray-400 bg-gray-800 hover:bg-gray-700 py-2.5 rounded-lg transition-colors"
@@ -57,11 +71,18 @@ export default function CancelarInspecaoButton({
         <button
           onClick={handleCancelar}
           disabled={loading}
-          className="flex-1 text-sm bg-red-800 hover:bg-red-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg transition-colors"
+          className="flex-1 text-sm bg-orange-800 hover:bg-orange-700 disabled:opacity-50 text-white font-medium py-2.5 rounded-lg transition-colors"
         >
-          {loading ? "Cancelando..." : "Confirmar Cancelamento"}
+          {loading ? "..." : "Cancelar inspeção"}
         </button>
       </div>
+      <button
+        onClick={handleExcluir}
+        disabled={loading}
+        className="w-full text-xs text-red-500 hover:text-red-300 border border-red-900/50 hover:border-red-700 py-2 rounded-lg transition-colors disabled:opacity-50"
+      >
+        {loading ? "..." : "Excluir permanentemente todos os dados"}
+      </button>
     </div>
   )
 }

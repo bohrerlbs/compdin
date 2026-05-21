@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Suspense } from "react"
 import { formatTipo } from "@/lib/inspecao"
+import { fmtDate, fmtDateShort, fmtHora } from "@/lib/fmt"
 import FiltroPanel from "./FiltroPanel"
 
 interface Props {
@@ -197,7 +198,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
                     <div className={`progress-bar-fill ${pct === 100 ? "done" : "partial"}`} style={{ width: `${pct}%` }} />
                   </div>
                   <p style={{ color: "var(--text-dim)", fontSize: "0.65rem", margin: "4px 0 0" }}>
-                    {concl}/{total} subitens · Aberta em {new Date(insp.abertaEm).toLocaleDateString("pt-BR")}
+                    {concl}/{total} subitens · Aberta em {fmtDate(insp.abertaEm)}
                   </p>
                 </div>
               )
@@ -267,7 +268,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
                 return (
                   <tr key={t.id} style={{ borderBottom: i < tarefasCompdin.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
                     <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
-                      {new Date(t.criadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+                      {fmtDateShort(t.criadoEm)}
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem" }}>
                       <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: "var(--gold-bright)" }}>{t.autor.trigrama}</span>
@@ -282,10 +283,10 @@ export default async function RelatoriosPage({ searchParams }: Props) {
                       <span style={{ fontSize: "0.6rem", fontWeight: 700, color: statusCfg.color }}>{statusCfg.label}</span>
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem", color: "var(--yellow-text)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
-                      {t.iniciadoEm ? new Date(t.iniciadoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—"}
+                      {t.iniciadoEm ? fmtDateShort(t.iniciadoEm) : "—"}
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem", color: "var(--green-text)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
-                      {t.concluidoEm ? new Date(t.concluidoEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" }) : "—"}
+                      {t.concluidoEm ? fmtDateShort(t.concluidoEm) : "—"}
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-primary)", fontSize: "0.72rem", maxWidth: 200 }}>
                       <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.titulo}</span>
@@ -319,7 +320,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
               {statuses.map((st, i) => (
                 <tr key={st.id} style={{ borderBottom: i < statuses.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
                   <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
-                    {st.dataConclusao ? new Date(st.dataConclusao).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                    {st.dataConclusao ? fmtHora(st.dataConclusao) : "—"}
                   </td>
                   <td style={{ padding: "0.45rem 0.6rem" }}>
                     <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: "var(--gold-bright)" }}>{st.mecanico?.trigrama ?? "—"}</span>
@@ -359,7 +360,3 @@ function fmtDur(min: number) {
   return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`
 }
 
-function fmtDate(s: string) {
-  const [y, m, d] = s.split("-")
-  return `${d}/${m}/${y}`
-}

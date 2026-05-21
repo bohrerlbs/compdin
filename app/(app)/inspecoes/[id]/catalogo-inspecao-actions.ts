@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
+import { TipoCartao } from "@prisma/client"
 
 const PRIVILEGED = ["ADMIN", "ENCARREGADO", "INSPETOR"]
 
@@ -56,6 +57,55 @@ export async function removerExecucaoCartao(
 
   revalidatePath(`/inspecoes/${inspecaoId}`)
   return {}
+}
+
+export async function adicionarCartaoNaInspecao(args: {
+  inspecaoId: string
+  subsistemaId: string
+  sistemaId: string
+  codigo: string
+  nomePt: string
+  tipo: TipoCartao
+  descricaoSubitem: string
+  permanente: boolean
+}): Promise<{ error?: string; cartaoId?: string }> {
+  const session = await auth()
+  if (!session || !PRIVILEGED.includes(session.user.role)) return { error: "Sem permissão." }
+
+  const { inspecaoId, subsistemaId, sistemaId, codigo, nomePt, tipo, descricaoSubitem, permanente } = args
+  if (!codigo.trim() || !nomePt.trim() || !descricaoSubitem.trim()) {
+    return { error: "Código, nome e descrição são obrigatórios." }
+  }
+
+  const inspecao = await prisma.inspecao.findUnique({ where: { id: inspecaoId }, select: { tipo: true } })
+  if (!inspecao) return { error: "Inspeção não encontrada." }
+
+  const cartao = await prisma.cartao.create({
+    data: {
+      subsistemaId,
+      codigo: codigo.trim().toUpperCase(),
+      nomeEn: nomePt.trim(),
+      nomePt: nomePt.trim(),
+      tipo,
+      extra: !permanente,
+      ordem: 9999,
+      subitens: { create: { letra: "A", descricaoPt: descricaoSubitem.trim(), ordem: 0 } },
+      ...(permanente ? { inspecaoTipos: { create: { inspecaoTipo: inspecao.tipo } } } : {}),
+    },
+    include: { subitens: true },
+  })
+
+  const execucao = await prisma.execucaoCartao.create({
+    data: {
+      inspecaoId,
+      cartaoId: cartao.id,
+      subitemStatuses: { create: { subitemId: cartao.subitens[0].id } },
+    },
+  })
+
+  revalidatePath(`/inspecoes/${inspecaoId}`)
+  revalidatePath(`/inspecoes/${inspecaoId}/sistemas/${sistemaId}/subsistemas/${subsistemaId}`)
+  return { cartaoId: execucao.cartaoId }
 }
 
 export async function getSistemasCatalogo() {

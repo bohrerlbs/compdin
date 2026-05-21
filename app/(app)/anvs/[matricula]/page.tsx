@@ -5,6 +5,7 @@ import Link from "next/link"
 import { InspecaoStatus } from "@prisma/client"
 import AbrirInspecaoButton from "./AbrirInspecaoButton"
 import { formatTipo } from "@/lib/inspecao"
+import { fmtDate } from "@/lib/fmt"
 
 interface Props {
   params: Promise<{ matricula: string }>
@@ -85,7 +86,7 @@ export default async function AnvPage({ params }: Props) {
                     <div>
                       <span className="text-white font-semibold">{formatTipo(insp.tipo)}</span>
                       <span className="text-gray-500 text-xs ml-2">
-                        Aberta em {new Date(insp.abertaEm).toLocaleDateString("pt-BR")}
+                        Aberta em {fmtDate(insp.abertaEm)}
                       </span>
                     </div>
                     <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -128,7 +129,7 @@ export default async function AnvPage({ params }: Props) {
                 <div>
                   <span className="text-gray-300 text-sm font-medium">{formatTipo(insp.tipo)}</span>
                   <span className="text-gray-500 text-xs ml-2">
-                    {new Date(insp.abertaEm).toLocaleDateString("pt-BR")}
+                    {fmtDate(insp.abertaEm)}
                   </span>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full ${

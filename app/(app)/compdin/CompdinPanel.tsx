@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { criarTarefa, atualizarStatusTarefa, editarTarefa, deletarTarefa, editarDatasTarefa } from "./actions"
 import { StatusTarefa } from "@prisma/client"
+import { fmtHora, fmtLocalInput } from "@/lib/fmt"
 
 interface Tarefa {
   id: string
@@ -28,15 +29,6 @@ interface Props {
 
 const PRIVILEGED = ["ADMIN", "ENCARREGADO", "INSPETOR"]
 
-function fmtHora(d: Date) {
-  const dt = new Date(d)
-  return `${dt.getDate().toString().padStart(2, "0")}/${(dt.getMonth() + 1).toString().padStart(2, "0")} ${dt.getHours().toString().padStart(2, "0")}:${dt.getMinutes().toString().padStart(2, "0")}`
-}
-
-function fmtLocalInput(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
 
 const inp: React.CSSProperties = {
   width: "100%",

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { deletarProcedimento, editarProcedimento, adicionarImagem, removerImagem } from "./actions"
+import { fmtDate } from "@/lib/fmt"
 
 interface Imagem {
   id: string
@@ -144,7 +145,7 @@ export default function ProcedimentoCard({ proc, userId, userRole, onRemovido, o
               padding: "0px 5px",
             }}>{proc.autorTrigrama}</span>
             <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>
-              {new Date(proc.criadoEm).toLocaleDateString("pt-BR")}
+              {fmtDate(proc.criadoEm)}
             </span>
             {imagens.length > 0 && (
               <span style={{ color: "var(--text-dim)", fontSize: "0.62rem" }}>

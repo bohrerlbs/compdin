@@ -6,6 +6,7 @@ import FecharInspecaoButton from "./FecharInspecaoButton"
 import CancelarInspecaoButton from "./CancelarInspecaoButton"
 import AdicionarCartaoCatalogoButton from "./AdicionarCartaoCatalogoButton"
 import { formatTipo } from "@/lib/inspecao"
+import { fmtDate } from "@/lib/fmt"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -77,7 +78,7 @@ export default async function InspecaoPage({ params }: Props) {
         <div>
           <h1 className="text-2xl font-bold text-white">{formatTipo(inspecao.tipo)}</h1>
           <p className="text-gray-400 text-sm">
-            ANV {inspecao.anv.matricula} · Aberta em {new Date(inspecao.abertaEm).toLocaleDateString("pt-BR")}
+            ANV {inspecao.anv.matricula} · Aberta em {fmtDate(inspecao.abertaEm)}
           </p>
           <p className="text-gray-500 text-xs mt-0.5">por {inspecao.abertaPor.nome}</p>
         </div>
@@ -150,7 +151,7 @@ export default async function InspecaoPage({ params }: Props) {
         <div className="mb-4">
           <AdicionarCartaoCatalogoButton
             inspecaoId={id}
-            isEspecial={inspecao.tipo === "INSP_ESPECIAL" || inspecao.tipo === "MNT_NAO_PROG"}
+            tipo={inspecao.tipo}
           />
         </div>
       )}

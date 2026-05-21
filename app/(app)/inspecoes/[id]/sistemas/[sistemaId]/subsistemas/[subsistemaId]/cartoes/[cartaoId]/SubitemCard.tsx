@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { StatusSubitem } from "@prisma/client"
 import { atualizarSubitem, editarDatasSubitem, inspecionarCartao, salvarObservacao, desassinarCartao } from "./actions"
+import { fmtDateTime, fmtHora, fmtLocalInput } from "@/lib/fmt"
 
 interface Props {
   statusId: string
@@ -833,26 +834,3 @@ export default function SubitemCard({
   )
 }
 
-function fmtLocalInput(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function fmtDateTime(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
-
-function fmtHora(iso: string) {
-  return new Date(iso).toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
