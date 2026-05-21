@@ -34,7 +34,21 @@
       "Bash(npm install *)",
       "Bash(node -e \"const wp=require\\('web-push'\\); const keys=wp.generateVAPIDKeys\\(\\); console.log\\('PUBLIC:',keys.publicKey\\); console.log\\('PRIVATE:',keys.privateKey\\);\")",
       "Bash(node -e \"console.log\\(require\\('./node_modules/next-pwa/package.json'\\).version\\)\")",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(npx ts-node -e ' *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(node -e ' *)",
+      "Bash(printf 'postgresql://postgres:Compdin1178$@db.qoytjbgpzgextmsjrjdy.supabase.co:5432/postgres')",
+      "Bash(nslookup db.qoytjbgpzgextmsjrjdy.supabase.co)",
+      "Bash(nslookup aws-0-us-east-2.pooler.supabase.com)",
+      "Bash(nslookup aws-0-us-east-1.pooler.supabase.com)",
+      "Bash(printf 'postgresql://postgres:Compdin1178$@db.qoytjbgpzgextmsjrjdy.supabase.co:6543/postgres?pgbouncer=true')",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies['next-auth']\\)\")",
+      "Bash(curl -s -X POST https://compdin-gtoblkcvt-bohrerlbs-projects.vercel.app/api/auth/callback/credentials -H 'Content-Type: application/x-www-form-urlencoded' -d 'matricula=admin&password=compdin2024&csrfToken=test&callbackUrl=/')",
+      "Bash(wait)",
+      "Bash(git commit *)",
+      "Bash(curl *)",
+      "Bash(vercel env *)"
     ]
   }
 }
