@@ -49,8 +49,8 @@ export default async function SistemaPage({ params }: Props) {
         <span className="text-white font-medium">Área {sistema.codigo}</span>
       </div>
 
-      <h1 className="text-xl font-bold text-white mb-1">{sistema.nomePt}</h1>
-      <p className="text-gray-400 text-sm mb-6">{sistema.nomeEn}</p>
+      <h1 className="text-xl font-bold text-white mb-1">{sistema.nomeEn}</h1>
+      <p className="text-gray-400 text-sm mb-6">{sistema.nomePt}</p>
 
       <div className="space-y-3">
         {sistema.subsistemas.map((sub) => {
@@ -73,8 +73,8 @@ export default async function SistemaPage({ params }: Props) {
             >
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <p className="text-white font-medium">{sub.nomePt}</p>
-                  <p className="text-gray-400 text-xs">{sub.nomeEn} · {cartoesNaInspecao.length} cartões</p>
+                  <p className="text-white font-medium">{sub.nomeEn}</p>
+                  <p className="text-gray-400 text-xs">{sub.nomePt} · {cartoesNaInspecao.length} cartões</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {pct === 100 && <span className="text-green-400">✓</span>}

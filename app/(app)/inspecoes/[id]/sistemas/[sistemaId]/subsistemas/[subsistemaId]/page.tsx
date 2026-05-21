@@ -74,8 +74,8 @@ export default async function SubsistemaPage({ params }: Props) {
         <span className="text-white font-medium">{subsistema.nomePt}</span>
       </div>
 
-      <h1 className="text-xl font-bold text-white mb-1">{subsistema.nomePt}</h1>
-      <p className="text-gray-400 text-sm mb-6">{subsistema.nomeEn}</p>
+      <h1 className="text-xl font-bold text-white mb-1">{subsistema.nomeEn}</h1>
+      <p className="text-gray-400 text-sm mb-6">{subsistema.nomePt}</p>
 
       <div className="space-y-3">
         {cartoesNaInspecao.map((cartao) => {
@@ -113,7 +113,8 @@ export default async function SubsistemaPage({ params }: Props) {
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-300 text-sm">{cartao.nomePt}</p>
+                  <p className="text-gray-300 text-sm">{cartao.nomeEn}</p>
+                  <p className="text-gray-500 text-xs">{cartao.nomePt}</p>
                   {cartao.wp && (
                     <p className="text-gray-500 text-xs mt-0.5 font-mono">{cartao.wp}</p>
                   )}
