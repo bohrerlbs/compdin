@@ -18,101 +18,73 @@ const PMI960: InspecaoTipo[] = [InspecaoTipo.PMI_960]
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+async function findOrCreateSubsistema(data: { sistemaId: string; nomeEn: string; nomePt: string; ordem: number }) {
+  return (
+    (await prisma.subsistema.findFirst({ where: { sistemaId: data.sistemaId, nomeEn: data.nomeEn } })) ??
+    (await prisma.subsistema.create({ data }))
+  )
+}
+
 async function main() {
   console.log("🌱 Iniciando seed...")
 
-  // Limpa na ordem correta (respeitando FK constraints)
-  await prisma.avisoLeitura.deleteMany()
-  await prisma.avisoExecucao.deleteMany()
-  await prisma.defeitoExecucao.deleteMany()
-  await prisma.subitemStatus.deleteMany()
-  await prisma.execucaoCartao.deleteMany()
-  await prisma.cartaoInspecaoTipo.deleteMany()
-  await prisma.ferramenta.deleteMany()
-  await prisma.subitem.deleteMany()
-  await prisma.cartao.deleteMany()
-  await prisma.subsistema.deleteMany()
-  await prisma.sistema.deleteMany()
-  await prisma.inspecao.deleteMany()
-  await prisma.anv.deleteMany()
-  // Limpa tabelas que referenciam usuários antes de deletar usuários
-  await prisma.tarefaCompdin.deleteMany()
-  await prisma.avisoGeral.deleteMany()
-  await prisma.notificacao.deleteMany()
-  await prisma.pushSubscription.deleteMany()
-  await prisma.procedimentoImagem.deleteMany()
-  await prisma.procedimentoPadrao.deleteMany()
-  await prisma.user.deleteMany()
-
-  // ─── Usuários padrão ──────────────────────────────────────────────────────
-
+  // ─── Usuários padrão (cria apenas se não existir) ─────────────────────────
   const senhaHash = await bcrypt.hash("compdin2024", 10)
+  for (const u of [
+    { nome: "Admin COMPDIN", trigrama: "ADM", matricula: "admin", role: "ADMIN" as const },
+    { nome: "Inspetor Padrão", trigrama: "INS", matricula: "inspetor01", role: "INSPETOR" as const },
+    { nome: "Encarregado Padrão", trigrama: "ENC", matricula: "encarregado01", role: "ENCARREGADO" as const },
+    { nome: "Mecânico Padrão", trigrama: "MEC", matricula: "mecanico01", role: "MECANICO" as const },
+  ]) {
+    await prisma.user.upsert({
+      where: { matricula: u.matricula },
+      create: { ...u, passwordHash: senhaHash },
+      update: {},
+    })
+  }
 
-  await prisma.user.createMany({
-    data: [
-      { nome: "Admin COMPDIN", trigrama: "ADM", matricula: "admin", passwordHash: senhaHash, role: "ADMIN" },
-      { nome: "Inspetor Padrão", trigrama: "INS", matricula: "inspetor01", passwordHash: senhaHash, role: "INSPETOR" },
-      { nome: "Encarregado Padrão", trigrama: "ENC", matricula: "encarregado01", passwordHash: senhaHash, role: "ENCARREGADO" },
-      { nome: "Mecânico Padrão", trigrama: "MEC", matricula: "mecanico01", passwordHash: senhaHash, role: "MECANICO" },
-    ],
-  })
-
-  // ─── ANVs ─────────────────────────────────────────────────────────────────
-
-  await prisma.anv.createMany({
-    data: [
-      { matricula: "8913", modelo: "H-60L" },
-      { matricula: "8914", modelo: "H-60L" },
-    ],
-  })
+  // ─── ANVs (cria apenas se não existir) ────────────────────────────────────
+  for (const anv of [
+    { matricula: "8913", modelo: "H-60L" },
+    { matricula: "8914", modelo: "H-60L" },
+  ]) {
+    await prisma.anv.upsert({
+      where: { matricula: anv.matricula },
+      create: anv,
+      update: {},
+    })
+  }
 
   // ─── Sistemas ─────────────────────────────────────────────────────────────
 
   const [s004, s005, s006] = await Promise.all([
-    prisma.sistema.create({ data: { codigo: "004", nomeEn: "Tail Cone Section", nomePt: "Seção do Cone de Cauda", ordem: 1 } }),
-    prisma.sistema.create({ data: { codigo: "005", nomeEn: "Tail Rotor Pylon Section", nomePt: "Seção do Pylon do Rotor de Cauda", ordem: 2 } }),
-    prisma.sistema.create({ data: { codigo: "006", nomeEn: "Main Rotor Pylon Section", nomePt: "Seção do Pylon do Rotor Principal", ordem: 3 } }),
+    prisma.sistema.upsert({ where: { codigo: "004" }, create: { codigo: "004", nomeEn: "Tail Cone Section", nomePt: "Seção do Cone de Cauda", ordem: 1 }, update: {} }),
+    prisma.sistema.upsert({ where: { codigo: "005" }, create: { codigo: "005", nomeEn: "Tail Rotor Pylon Section", nomePt: "Seção do Pylon do Rotor de Cauda", ordem: 2 }, update: {} }),
+    prisma.sistema.upsert({ where: { codigo: "006" }, create: { codigo: "006", nomeEn: "Main Rotor Pylon Section", nomePt: "Seção do Pylon do Rotor Principal", ordem: 3 }, update: {} }),
   ])
 
   // ─── Subsistemas 004 ──────────────────────────────────────────────────────
 
-  const sub004_shafts = await prisma.subsistema.create({
-    data: { sistemaId: s004.id, nomeEn: "Drive Shafts (Sec II & III)", nomePt: "Eixos de Transmissão (Sec II e III)", ordem: 1 },
-  })
+  const sub004_shafts = await findOrCreateSubsistema({ sistemaId: s004.id, nomeEn: "Drive Shafts (Sec II & III)", nomePt: "Eixos de Transmissão (Sec II e III)", ordem: 1 })
 
   // ─── Subsistemas 005 ──────────────────────────────────────────────────────
 
-  const [sub005_igb, sub005_pylon, sub005_trblades] = await Promise.all([
-    prisma.subsistema.create({ data: { sistemaId: s005.id, nomeEn: "IGB (Intermediate Gear Box)", nomePt: "IGB (Caixa de Engrenagem Intermediária)", ordem: 1 } }),
-    prisma.subsistema.create({ data: { sistemaId: s005.id, nomeEn: "Pylon / TGB (Tail Gear Box)", nomePt: "Pylon / TGB (Caixa de Engrenagem de Cauda)", ordem: 2 } }),
-    prisma.subsistema.create({ data: { sistemaId: s005.id, nomeEn: "TR Blades (Tail Rotor Blades)", nomePt: "Pás do Rotor de Cauda", ordem: 3 } }),
-  ])
+  const sub005_igb = await findOrCreateSubsistema({ sistemaId: s005.id, nomeEn: "IGB (Intermediate Gear Box)", nomePt: "IGB (Caixa de Engrenagem Intermediária)", ordem: 1 })
+  const sub005_pylon = await findOrCreateSubsistema({ sistemaId: s005.id, nomeEn: "Pylon / TGB (Tail Gear Box)", nomePt: "Pylon / TGB (Caixa de Engrenagem de Cauda)", ordem: 2 })
+  const sub005_trblades = await findOrCreateSubsistema({ sistemaId: s005.id, nomeEn: "TR Blades (Tail Rotor Blades)", nomePt: "Pás do Rotor de Cauda", ordem: 3 })
 
   // ─── Subsistemas 006 ──────────────────────────────────────────────────────
 
-  const [
-    sub006_acc,
-    sub006_trans,
-    sub006_hub,
-    sub006_droop,
-    sub006_bifilar,
-    sub006_swash,
-    sub006_pitch,
-    sub006_mrblades,
-    sub006_oilcooler,
-    sub006_sec1shaft,
-  ] = await Promise.all([
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Accessory Module", nomePt: "Módulo Acessório", ordem: 1 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Main Transmission", nomePt: "Transmissão Principal", ordem: 2 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "MR Hub & Spindle", nomePt: "Hub e Spindle do Rotor Principal", ordem: 3 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Droop Stops & Anti-Flap", nomePt: "Batentes de Droop e Anti-Flap", ordem: 4 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Bifilar", nomePt: "Bifilar (Absorvedor de Vibração)", ordem: 5 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Swashplate", nomePt: "Prato Oscilante (Swashplate)", ordem: 6 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Pitch Control", nomePt: "Controle de Passo", ordem: 7 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "MR Blades (Main Rotor Blades)", nomePt: "Pás do Rotor Principal", ordem: 8 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Oil Cooler / Radiator", nomePt: "Resfriador de Óleo / Radiador", ordem: 9 } }),
-    prisma.subsistema.create({ data: { sistemaId: s006.id, nomeEn: "Drive Shaft Sec I", nomePt: "Eixo de Transmissão Sec I", ordem: 10 } }),
-  ])
+  const sub006_acc = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Accessory Module", nomePt: "Módulo Acessório", ordem: 1 })
+  const sub006_trans = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Main Transmission", nomePt: "Transmissão Principal", ordem: 2 })
+  const sub006_hub = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "MR Hub & Spindle", nomePt: "Hub e Spindle do Rotor Principal", ordem: 3 })
+  const sub006_droop = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Droop Stops & Anti-Flap", nomePt: "Batentes de Droop e Anti-Flap", ordem: 4 })
+  const sub006_bifilar = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Bifilar", nomePt: "Bifilar (Absorvedor de Vibração)", ordem: 5 })
+  const sub006_swash = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Swashplate", nomePt: "Prato Oscilante (Swashplate)", ordem: 6 })
+  const sub006_pitch = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Pitch Control", nomePt: "Controle de Passo", ordem: 7 })
+  const sub006_mrblades = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "MR Blades (Main Rotor Blades)", nomePt: "Pás do Rotor Principal", ordem: 8 })
+  const sub006_oilcooler = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Oil Cooler / Radiator", nomePt: "Resfriador de Óleo / Radiador", ordem: 9 })
+  const sub006_sec1shaft = await findOrCreateSubsistema({ sistemaId: s006.id, nomeEn: "Drive Shaft Sec I", nomePt: "Eixo de Transmissão Sec I", ordem: 10 })
 
   // ─── Helper para criar cartão com subitens ────────────────────────────────
 
@@ -135,6 +107,11 @@ async function main() {
   }
 
   async function criaCartao(data: CartaoInput) {
+    const existing = await prisma.cartao.findFirst({
+      where: { subsistemaId: data.subsistemaId, codigo: data.codigo },
+    })
+    if (existing) return existing
+
     const cartao = await prisma.cartao.create({
       data: {
         subsistemaId: data.subsistemaId,
@@ -2318,7 +2295,10 @@ const FERR_POR_CODIGO: Record<string, Ferr[]> = {
 }
 
 async function seedFerramentas() {
-  const cartoes = await prisma.cartao.findMany({ select: { id: true, codigo: true, tipo: true } })
+  const cartoes = await prisma.cartao.findMany({
+    select: { id: true, codigo: true, tipo: true },
+    where: { ferramentas: { none: {} } },
+  })
 
   for (const cartao of cartoes) {
     const ferramentas = FERR_POR_CODIGO[cartao.codigo] ?? BASIC_INSP
