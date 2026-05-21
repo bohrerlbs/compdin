@@ -8,7 +8,7 @@ import { fmtDate, fmtDateShort, fmtHora } from "@/lib/fmt"
 import FiltroPanel from "./FiltroPanel"
 
 interface Props {
-  searchParams: Promise<{ di?: string; df?: string; mec?: string; sis?: string; sub?: string; anv?: string }>
+  searchParams: Promise<{ di?: string; df?: string; mec?: string; sis?: string; sub?: string; anv?: string; busca?: string; dia?: string }>
 }
 
 export default async function RelatoriosPage({ searchParams }: Props) {
@@ -18,7 +18,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
   const { role } = session.user
   if (role !== "ENCARREGADO" && role !== "INSPETOR" && role !== "ADMIN") redirect("/anvs")
 
-  const { di, df, mec, sis, sub, anv } = await searchParams
+  const { di, df, mec, sis, sub, anv, busca, dia } = await searchParams
 
   // ── Dados para os selects de filtro ───────────────────────────────────────
   const [users, sistemas, subsistemas, anvs] = await Promise.all([
@@ -30,7 +30,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
 
   // ── Construir where para subitemStatuses ──────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { status: "CONCLUIDA", mecanicoId: { not: null } }
+  const where: any = { status: "CONCLUIDA" }
 
   if (di || df) {
     where.dataConclusao = {}
@@ -42,7 +42,6 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     where.execucao = { inspecao: { anvId: anv } }
   }
 
-  // Para filtro de sistema/subsistema precisamos filtrar pelo cartão
   const cartaoWhere = sub
     ? { subsistemaId: sub }
     : sis
@@ -66,11 +65,15 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     if (di) tarefasWhere.criadoEm.gte = new Date(`${di}T00:00:00`)
     if (df) tarefasWhere.criadoEm.lte = new Date(`${df}T23:59:59`)
   }
+  if (busca?.trim()) {
+    tarefasWhere.titulo = { contains: busca.trim(), mode: "insensitive" }
+  }
   const tarefasCompdin = await prisma.tarefaCompdin.findMany({
     where: tarefasWhere,
     include: {
       autor: { select: { trigrama: true, nome: true } },
       responsavel: { select: { trigrama: true, nome: true } },
+      mecanicos: { include: { mecanico: { select: { trigrama: true } } } },
     },
     orderBy: { criadoEm: "desc" },
     take: 100,
@@ -81,6 +84,7 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     where,
     include: {
       mecanico: { select: { nome: true, trigrama: true, matricula: true } },
+      mecanicos: { include: { mecanico: { select: { trigrama: true } } } },
       subitem: {
         select: {
           letra: true,
@@ -139,7 +143,61 @@ export default async function RelatoriosPage({ searchParams }: Props) {
     orderBy: { abertaEm: "desc" },
   })
 
-  const temFiltro = !!(di || df || mec || sis || sub || anv)
+  // ── Livro do dia ──────────────────────────────────────────────────────────
+  let livroData: {
+    statuses: typeof statuses
+    tarefas: typeof tarefasCompdin
+  } | null = null
+
+  if (dia) {
+    const livroStatuses = await prisma.subitemStatus.findMany({
+      where: {
+        status: "CONCLUIDA",
+        dataConclusao: {
+          gte: new Date(`${dia}T00:00:00`),
+          lte: new Date(`${dia}T23:59:59`),
+        },
+      },
+      include: {
+        mecanico: { select: { trigrama: true } },
+        mecanicos: { include: { mecanico: { select: { trigrama: true } } } },
+        subitem: {
+          select: {
+            letra: true,
+            cartao: {
+              select: {
+                codigo: true, nomePt: true,
+                subsistema: { select: { sistema: { select: { codigo: true } } } },
+              },
+            },
+          },
+        },
+        execucao: {
+          include: { inspecao: { include: { anv: { select: { matricula: true } }, } } },
+        },
+      },
+      orderBy: { dataConclusao: "asc" },
+    })
+
+    const livroTarefas = await prisma.tarefaCompdin.findMany({
+      where: {
+        status: "CONCLUIDA",
+        concluidoEm: {
+          gte: new Date(`${dia}T00:00:00`),
+          lte: new Date(`${dia}T23:59:59`),
+        },
+      },
+      include: {
+        responsavel: { select: { trigrama: true } },
+        mecanicos: { include: { mecanico: { select: { trigrama: true } } } },
+      },
+      orderBy: { concluidoEm: "asc" },
+    })
+
+    livroData = { statuses: livroStatuses as typeof statuses, tarefas: livroTarefas as typeof tarefasCompdin }
+  }
+
+  const temFiltro = !!(di || df || mec || sis || sub || anv || busca || dia)
 
   return (
     <div>
@@ -154,12 +212,14 @@ export default async function RelatoriosPage({ searchParams }: Props) {
         </p>
         {temFiltro && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {dia && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Livro: {fmtDate(dia)}</span>}
             {di && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>De: {fmtDate(di)}</span>}
             {df && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Até: {fmtDate(df)}</span>}
             {mec && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Mec: {users.find(u => u.id === mec)?.trigrama}</span>}
             {anv && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>ANV: {anvs.find(a => a.id === anv)?.matricula}</span>}
             {sis && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Sis: {sistemas.find(s => s.id === sis)?.codigo}</span>}
             {sub && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Sub: {subsistemas.find(s => s.id === sub)?.nomePt}</span>}
+            {busca && <span className="badge-gold" style={{ fontSize: "0.58rem" }}>Busca: &quot;{busca}&quot;</span>}
           </div>
         )}
       </div>
@@ -173,6 +233,16 @@ export default async function RelatoriosPage({ searchParams }: Props) {
           anvs={anvs.map(a => ({ id: a.id, label: a.matricula }))}
         />
       </Suspense>
+
+      {/* ── LIVRO DO DIA ─────────────────────────────────────────────────── */}
+      {livroData && dia && (
+        <section style={{ marginBottom: "2rem" }}>
+          <h2 style={{ fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--gold)", fontWeight: 700, margin: "0 0 0.75rem" }}>
+            LIVRO DO DIA — {fmtDate(dia)}
+          </h2>
+          <LivroView statuses={livroData.statuses} tarefas={livroData.tarefas} />
+        </section>
+      )}
 
       {/* Inspeções em andamento — só sem filtro */}
       {!temFiltro && (
@@ -247,13 +317,13 @@ export default async function RelatoriosPage({ searchParams }: Props) {
       {/* Tarefas COMPDIN */}
       <section style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--text-dim)", fontWeight: 700, margin: "0 0 0.75rem" }}>
-          TAREFAS COMPDIN {temFiltro ? "(FILTRADO)" : `(${tarefasCompdin.length})`}
+          TAREFAS COMPDIN {busca ? `— busca: "${busca}"` : temFiltro ? "(FILTRADO)" : `(${tarefasCompdin.length})`}
         </h2>
         <div className="card-mil" style={{ overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["CRIADA EM", "AUTOR", "RESPONSÁVEL", "STATUS", "INICIADA", "CONCLUÍDA", "TAREFA"].map(h => (
+                {["CRIADA EM", "AUTOR", "MECÂNICOS", "STATUS", "INICIADA", "CONCLUÍDA", "TAREFA"].map(h => (
                   <th key={h} style={{ padding: "0.5rem 0.6rem", textAlign: "left", fontSize: "0.55rem", letterSpacing: "0.08em", color: "var(--text-dim)", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
@@ -265,6 +335,9 @@ export default async function RelatoriosPage({ searchParams }: Props) {
                   INICIADA: { color: "var(--yellow-text)", label: "INICIADA" },
                   CONCLUIDA: { color: "var(--green-text)", label: "CONCLUÍDA" },
                 }[t.status]
+                const mecTrigrams = t.mecanicos.length > 0
+                  ? t.mecanicos.map(m => m.mecanico.trigrama).join(", ")
+                  : t.responsavel?.trigrama ?? "—"
                 return (
                   <tr key={t.id} style={{ borderBottom: i < tarefasCompdin.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
                     <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
@@ -274,10 +347,9 @@ export default async function RelatoriosPage({ searchParams }: Props) {
                       <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: "var(--gold-bright)" }}>{t.autor.trigrama}</span>
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem" }}>
-                      {t.responsavel
-                        ? <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: t.status === "CONCLUIDA" ? "var(--green-text)" : "var(--yellow-text)" }}>{t.responsavel.trigrama}</span>
-                        : <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>—</span>
-                      }
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: t.status === "CONCLUIDA" ? "var(--green-text)" : t.status === "INICIADA" ? "var(--yellow-text)" : "var(--text-dim)" }}>
+                        {mecTrigrams}
+                      </span>
                     </td>
                     <td style={{ padding: "0.45rem 0.6rem" }}>
                       <span style={{ fontSize: "0.6rem", fontWeight: 700, color: statusCfg.color }}>{statusCfg.label}</span>
@@ -317,29 +389,34 @@ export default async function RelatoriosPage({ searchParams }: Props) {
               </tr>
             </thead>
             <tbody>
-              {statuses.map((st, i) => (
-                <tr key={st.id} style={{ borderBottom: i < statuses.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
-                    {st.dataConclusao ? fmtHora(st.dataConclusao) : "—"}
-                  </td>
-                  <td style={{ padding: "0.45rem 0.6rem" }}>
-                    <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.75rem", color: "var(--gold-bright)" }}>{st.mecanico?.trigrama ?? "—"}</span>
-                  </td>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-primary)", fontSize: "0.72rem", fontFamily: "monospace", fontWeight: 600 }}>
-                    {st.execucao.inspecao.anv.matricula}
-                  </td>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-muted)", fontSize: "0.68rem" }}>{fmt(st.execucao.inspecao.tipo)}</td>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem" }}>
-                    {st.subitem?.cartao?.subsistema?.sistema?.codigo ?? "—"}
-                  </td>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--gold)", fontSize: "0.68rem", fontFamily: "monospace", fontWeight: 600 }}>
-                    {st.subitem?.cartao?.codigo ?? "—"}
-                  </td>
-                  <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-muted)", fontSize: "0.68rem", fontFamily: "monospace" }}>
-                    {st.subitem?.letra ?? "—"}
-                  </td>
-                </tr>
-              ))}
+              {statuses.map((st, i) => {
+                const mecTrigrams = st.mecanicos.length > 0
+                  ? st.mecanicos.map(m => m.mecanico.trigrama).join(", ")
+                  : st.mecanico?.trigrama ?? "—"
+                return (
+                  <tr key={st.id} style={{ borderBottom: i < statuses.length - 1 ? "1px solid var(--border)" : undefined, background: i % 2 === 0 ? "rgba(255,255,255,0.01)" : "transparent" }}>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
+                      {st.dataConclusao ? fmtHora(st.dataConclusao) : "—"}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem" }}>
+                      <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: "var(--gold-bright)" }}>{mecTrigrams}</span>
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-primary)", fontSize: "0.72rem", fontFamily: "monospace", fontWeight: 600 }}>
+                      {st.execucao.inspecao.anv.matricula}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-muted)", fontSize: "0.68rem" }}>{fmt(st.execucao.inspecao.tipo)}</td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-dim)", fontSize: "0.65rem" }}>
+                      {st.subitem?.cartao?.subsistema?.sistema?.codigo ?? "—"}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--gold)", fontSize: "0.68rem", fontFamily: "monospace", fontWeight: 600 }}>
+                      {st.subitem?.cartao?.codigo ?? "—"}
+                    </td>
+                    <td style={{ padding: "0.45rem 0.6rem", color: "var(--text-muted)", fontSize: "0.68rem", fontFamily: "monospace" }}>
+                      {st.subitem?.letra ?? "—"}
+                    </td>
+                  </tr>
+                )
+              })}
               {statuses.length === 0 && (
                 <tr><td colSpan={7} style={{ padding: "1.5rem", textAlign: "center", color: "var(--text-dim)", fontSize: "0.8rem" }}>Sem registros para os filtros aplicados.</td></tr>
               )}
@@ -347,6 +424,100 @@ export default async function RelatoriosPage({ searchParams }: Props) {
           </table>
         </div>
       </section>
+    </div>
+  )
+}
+
+// ── Livro do Dia ──────────────────────────────────────────────────────────────
+
+type AnyStatus = {
+  mecanicos: { mecanico: { trigrama: string } }[]
+  mecanico: { trigrama: string } | null
+  subitem: {
+    letra: string
+    cartao: {
+      codigo: string
+      nomePt: string
+      subsistema: { sistema: { codigo: string } }
+    } | null
+  } | null
+  execucao: { inspecao: { tipo: string; anv: { matricula: string } } }
+}
+
+type AnyTarefa = {
+  id: string
+  titulo: string
+  mecanicos: { mecanico: { trigrama: string } }[]
+  responsavel: { trigrama: string } | null
+}
+
+function mecStr(mecanicos: { mecanico: { trigrama: string } }[], fallback: string | null | undefined) {
+  return mecanicos.length > 0 ? mecanicos.map(m => m.mecanico.trigrama).join(", ") : (fallback ?? "—")
+}
+
+function LivroView({ statuses, tarefas }: { statuses: AnyStatus[]; tarefas: AnyTarefa[] }) {
+  // Group statuses by ANV matricula
+  const byAnv = new Map<string, AnyStatus[]>()
+  for (const st of statuses) {
+    const mat = st.execucao.inspecao.anv.matricula
+    const arr = byAnv.get(mat) ?? []
+    arr.push(st)
+    byAnv.set(mat, arr)
+  }
+
+  const nada = byAnv.size === 0 && tarefas.length === 0
+
+  if (nada) {
+    return (
+      <div className="card-mil" style={{ padding: "1.5rem", textAlign: "center" }}>
+        <p style={{ color: "var(--text-dim)", fontSize: "0.8rem" }}>Nenhuma atividade registrada neste dia.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="card-mil" style={{ padding: "1rem" }}>
+      {Array.from(byAnv.entries()).map(([mat, sts]) => (
+        <div key={mat} style={{ marginBottom: "1.25rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "0.95rem", color: "var(--gold-bright)", letterSpacing: "0.08em" }}>{mat}</span>
+            <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>{fmt(sts[0].execucao.inspecao.tipo)}</span>
+          </div>
+          <div style={{ paddingLeft: 12, borderLeft: "2px solid var(--border-gold)" }}>
+            {sts.map((st, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < sts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                  <span style={{ color: "var(--gold)", fontFamily: "monospace", fontWeight: 600 }}>{st.subitem?.cartao?.codigo ?? "—"}</span>
+                  {" "}<span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>seção {st.subitem?.cartao?.subsistema?.sistema?.codigo}</span>
+                  {" · "}{st.subitem?.cartao?.nomePt}
+                  {" · passo "}<span style={{ fontFamily: "monospace" }}>{st.subitem?.letra}</span>
+                </span>
+                <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: "var(--green-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
+                  {mecStr(st.mecanicos, st.mecanico?.trigrama)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {tarefas.length > 0 && (
+        <div style={{ marginTop: byAnv.size > 0 ? "1rem" : 0, paddingTop: byAnv.size > 0 ? "1rem" : 0, borderTop: byAnv.size > 0 ? "1px solid var(--border)" : undefined }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "0.95rem", color: "var(--text-primary)" }}>COMPDIN</span>
+          </div>
+          <div style={{ paddingLeft: 12, borderLeft: "2px solid var(--border)" }}>
+            {tarefas.map((t, i) => (
+              <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "3px 0", borderBottom: i < tarefas.length - 1 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>{t.titulo}</span>
+                <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "0.72rem", color: "var(--green-text)", marginLeft: 12, whiteSpace: "nowrap" }}>
+                  {mecStr(t.mecanicos, t.responsavel?.trigrama)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -359,4 +530,3 @@ function fmtDur(min: number) {
   const m = min % 60
   return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`
 }
-

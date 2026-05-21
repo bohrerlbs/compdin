@@ -122,9 +122,10 @@ export default async function AnvPage({ params }: Props) {
           </h2>
           <div className="space-y-2">
             {historico.slice(0, 5).map((insp) => (
-              <div
+              <Link
                 key={insp.id}
-                className="bg-gray-900/50 border border-gray-800 rounded-xl p-3 flex items-center justify-between"
+                href={`/inspecoes/${insp.id}`}
+                className="bg-gray-900/50 border border-gray-800 hover:border-gray-700 rounded-xl p-3 flex items-center justify-between transition-colors"
               >
                 <div>
                   <span className="text-gray-300 text-sm font-medium">{formatTipo(insp.tipo)}</span>
@@ -139,7 +140,7 @@ export default async function AnvPage({ params }: Props) {
                 }`}>
                   {insp.status === "CONCLUIDA" ? "Concluída" : "Cancelada"}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </section>

@@ -85,9 +85,11 @@ export default async function InspecaoPage({ params }: Props) {
         <span className={`text-xs px-2.5 py-1 rounded-full mt-1 ${
           inspecao.status === "ABERTA"
             ? "bg-yellow-900/50 text-yellow-400 border border-yellow-800"
+            : inspecao.status === "CANCELADA"
+            ? "bg-red-900/50 text-red-400 border border-red-800"
             : "bg-green-900/50 text-green-400 border border-green-800"
         }`}>
-          {inspecao.status === "ABERTA" ? "Aberta" : "Concluída"}
+          {inspecao.status === "ABERTA" ? "Aberta" : inspecao.status === "CANCELADA" ? "Cancelada" : "Concluída"}
         </span>
       </div>
 
@@ -119,8 +121,8 @@ export default async function InspecaoPage({ params }: Props) {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <span className="text-xs text-gray-500 font-mono">Área {sistema.codigo}</span>
-                  <p className="text-white font-medium">{sistema.nomePt}</p>
-                  <p className="text-gray-400 text-xs">{sistema.nomeEn}</p>
+                  <p className="text-white font-medium">{sistema.nomeEn}</p>
+                  <p className="text-gray-400 text-xs">{sistema.nomePt}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {pct === 100 && (
@@ -161,10 +163,10 @@ export default async function InspecaoPage({ params }: Props) {
         <FecharInspecaoButton inspecaoId={id} />
       )}
 
-      {/* Cancelar inspeção */}
-      {inspecao.status === "ABERTA" && (role === "ADMIN" || role === "INSPETOR" || role === "ENCARREGADO") && (
+      {/* Cancelar / Excluir inspeção */}
+      {(inspecao.status === "ABERTA" || inspecao.status === "CANCELADA") && (role === "ADMIN" || role === "INSPETOR" || role === "ENCARREGADO") && (
         <div className="mt-3">
-          <CancelarInspecaoButton inspecaoId={id} anvMatricula={inspecao.anv.matricula} />
+          <CancelarInspecaoButton inspecaoId={id} anvMatricula={inspecao.anv.matricula} status={inspecao.status} />
         </div>
       )}
     </div>

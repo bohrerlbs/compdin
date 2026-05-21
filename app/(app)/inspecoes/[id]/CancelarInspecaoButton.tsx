@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation"
 export default function CancelarInspecaoButton({
   inspecaoId,
   anvMatricula,
+  status,
 }: {
   inspecaoId: string
   anvMatricula: string
+  status: string
 }) {
   const router = useRouter()
-  const [confirm, setConfirm] = useState(false)
+  const [confirm, setConfirm] = useState(status === "CANCELADA")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -41,6 +43,22 @@ export default function CancelarInspecaoButton({
     }
     router.push(`/anvs/${anvMatricula}`)
     router.refresh()
+  }
+
+  if (status === "CANCELADA") {
+    return (
+      <div className="bg-gray-900 border border-red-900/50 rounded-xl p-4">
+        <p className="text-gray-400 text-xs text-center mb-3">Esta inspeção está cancelada.</p>
+        {error && <p className="text-red-400 text-xs text-center mb-3">{error}</p>}
+        <button
+          onClick={handleExcluir}
+          disabled={loading}
+          className="w-full text-sm text-red-400 border border-red-900 hover:bg-red-900/20 py-2.5 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {loading ? "Excluindo..." : "Excluir permanentemente todos os dados"}
+        </button>
+      </div>
+    )
   }
 
   if (!confirm) {

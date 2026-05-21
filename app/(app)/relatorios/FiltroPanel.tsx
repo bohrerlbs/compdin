@@ -23,6 +23,12 @@ const inp: React.CSSProperties = {
   boxSizing: "border-box",
 }
 
+function fmtDateInput(s: string) {
+  if (!s) return ""
+  const [y, m, d] = s.split("-")
+  return `${d}/${m}/${y}`
+}
+
 export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: Props) {
   const router = useRouter()
   const sp = useSearchParams()
@@ -33,6 +39,8 @@ export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: 
   const [sisId, setSisId] = useState(sp.get("sis") ?? "")
   const [subId, setSubId] = useState(sp.get("sub") ?? "")
   const [anvId, setAnvId] = useState(sp.get("anv") ?? "")
+  const [busca, setBusca] = useState(sp.get("busca") ?? "")
+  const [dia, setDia] = useState(sp.get("dia") ?? "")
 
   function aplicar() {
     const params = new URLSearchParams()
@@ -42,11 +50,14 @@ export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: 
     if (sisId) params.set("sis", sisId)
     if (subId) params.set("sub", subId)
     if (anvId) params.set("anv", anvId)
+    if (busca.trim()) params.set("busca", busca.trim())
+    if (dia) params.set("dia", dia)
     router.push(`/relatorios?${params.toString()}`)
   }
 
   function limpar() {
     setDataIni(""); setDataFim(""); setMecId(""); setSisId(""); setSubId(""); setAnvId("")
+    setBusca(""); setDia("")
     router.push("/relatorios")
   }
 
@@ -63,14 +74,27 @@ export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: 
         )}
       </div>
 
+      {/* Livro do dia */}
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>LIVRO DO DIA (selecionar um dia específico)</label>
+        <div style={{ position: "relative" }}>
+          <input type="date" value={dia} onChange={e => setDia(e.target.value)} style={{ ...inp, colorScheme: "dark" }} />
+          {dia && <span style={{ display: "block", fontSize: "0.62rem", color: "var(--gold)", marginTop: 2 }}>{fmtDateInput(dia)}</span>}
+        </div>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--border)", margin: "8px 0" }} />
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div>
           <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>DATA INÍCIO</label>
-          <input type="date" value={dataIni} onChange={e => setDataIni(e.target.value)} style={inp} />
+          <input type="date" value={dataIni} onChange={e => setDataIni(e.target.value)} style={{ ...inp, colorScheme: "dark" }} />
+          {dataIni && <span style={{ display: "block", fontSize: "0.62rem", color: "var(--text-dim)", marginTop: 2 }}>{fmtDateInput(dataIni)}</span>}
         </div>
         <div>
           <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>DATA FIM</label>
-          <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={inp} />
+          <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} style={{ ...inp, colorScheme: "dark" }} />
+          {dataFim && <span style={{ display: "block", fontSize: "0.62rem", color: "var(--text-dim)", marginTop: 2 }}>{fmtDateInput(dataFim)}</span>}
         </div>
       </div>
 
@@ -91,7 +115,7 @@ export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: 
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: "0.85rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
         <div>
           <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>SISTEMA (SEÇÃO)</label>
           <select value={sisId} onChange={e => { setSisId(e.target.value); setSubId("") }} style={{ ...inp, cursor: "pointer" }}>
@@ -103,11 +127,21 @@ export default function FiltroPanel({ mecanicos, sistemas, subsistemas, anvs }: 
           <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>SUBSISTEMA</label>
           <select value={subId} onChange={e => setSubId(e.target.value)} style={{ ...inp, cursor: "pointer" }}>
             <option value="">Todos</option>
-            {subsistemas
-              .filter(s => !sisId || s.id.startsWith(sisId + ":") || true)
-              .map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+            {subsistemas.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </div>
+      </div>
+
+      <div style={{ marginBottom: "0.85rem" }}>
+        <label style={{ color: "var(--text-dim)", fontSize: "0.56rem", letterSpacing: "0.08em", display: "block", marginBottom: 2 }}>BUSCA POR TAREFA (nome)</label>
+        <input
+          type="text"
+          value={busca}
+          onChange={e => setBusca(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && aplicar()}
+          placeholder="Buscar por nome da tarefa COMPDIN..."
+          style={inp}
+        />
       </div>
 
       <button onClick={aplicar} className="btn-primary" style={{ width: "100%", fontSize: "0.72rem", padding: "6px" }}>
