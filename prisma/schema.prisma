@@ -38,6 +38,8 @@ model User {
   avisosGerais           AvisoGeral[]
   tarefasCriadas         TarefaCompdin[]    @relation("tarefasAutor")
   tarefasExecutadas      TarefaCompdin[]    @relation("tarefasResponsavel")
+  subitemMecanicos       SubitemStatusMecanico[]
+  tarefaMecanicos        TarefaCompdinMecanico[]
 
   @@map("users")
 }
@@ -63,8 +65,21 @@ model TarefaCompdin {
 
   autor       User  @relation("tarefasAutor", fields: [autorId], references: [id])
   responsavel User? @relation("tarefasResponsavel", fields: [responsavelId], references: [id])
+  mecanicos   TarefaCompdinMecanico[]
 
   @@map("tarefas_compdin")
+}
+
+model TarefaCompdinMecanico {
+  id         String @id @default(cuid())
+  tarefaId   String @map("tarefa_id")
+  mecanicoId String @map("mecanico_id")
+
+  tarefa    TarefaCompdin @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  mecanico  User          @relation(fields: [mecanicoId], references: [id])
+
+  @@unique([tarefaId, mecanicoId])
+  @@map("tarefas_compdin_mecanicos")
 }
 
 // ─── Avisos Gerais ────────────────────────────────────────────────────────────
@@ -385,10 +400,23 @@ model SubitemStatus {
   observacaoAutorId String?      @map("observacao_autor_id")
   observacaoEm     DateTime?     @map("observacao_em")
 
-  execucao          ExecucaoCartao @relation(fields: [execucaoId], references: [id])
-  subitem           Subitem        @relation(fields: [subitemId], references: [id])
-  mecanico          User?          @relation(fields: [mecanicoId], references: [id])
+  execucao          ExecucaoCartao        @relation(fields: [execucaoId], references: [id])
+  subitem           Subitem               @relation(fields: [subitemId], references: [id])
+  mecanico          User?                 @relation(fields: [mecanicoId], references: [id])
+  mecanicos         SubitemStatusMecanico[]
 
   @@unique([execucaoId, subitemId])
   @@map("subitem_statuses")
+}
+
+model SubitemStatusMecanico {
+  id         String @id @default(cuid())
+  statusId   String @map("status_id")
+  mecanicoId String @map("mecanico_id")
+
+  status   SubitemStatus @relation(fields: [statusId], references: [id], onDelete: Cascade)
+  mecanico User          @relation(fields: [mecanicoId], references: [id])
+
+  @@unique([statusId, mecanicoId])
+  @@map("subitem_status_mecanicos")
 }

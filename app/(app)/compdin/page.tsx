@@ -10,13 +10,24 @@ export default async function CompdinPage() {
   const role = session!.user.role
   const userId = session!.user.id
 
-  const tarefas = await prisma.tarefaCompdin.findMany({
-    orderBy: [{ status: "asc" }, { criadoEm: "desc" }],
-    include: {
-      autor: { select: { trigrama: true } },
-      responsavel: { select: { trigrama: true } },
-    },
-  })
+  const [tarefas, todosMecanicos] = await Promise.all([
+    prisma.tarefaCompdin.findMany({
+      orderBy: [{ status: "asc" }, { criadoEm: "desc" }],
+      include: {
+        autor: { select: { trigrama: true } },
+        responsavel: { select: { trigrama: true } },
+        mecanicos: {
+          include: { mecanico: { select: { id: true, trigrama: true, nome: true } } },
+          orderBy: { mecanico: { trigrama: "asc" } },
+        },
+      },
+    }),
+    prisma.user.findMany({
+      where: { ativo: true },
+      select: { id: true, trigrama: true, nome: true },
+      orderBy: { trigrama: "asc" },
+    }),
+  ])
 
   return (
     <div>
@@ -40,6 +51,7 @@ export default async function CompdinPage() {
         tarefas={tarefas as Parameters<typeof CompdinPanel>[0]["tarefas"]}
         userId={userId}
         userRole={role}
+        todosMecanicos={todosMecanicos}
       />
     </div>
   )

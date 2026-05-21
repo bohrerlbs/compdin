@@ -31,6 +31,8 @@ export async function criarTarefa(titulo: string, descricao?: string): Promise<{
 export async function atualizarStatusTarefa(
   id: string,
   novoStatus: StatusTarefa,
+  dataOverride?: string,
+  extraMecanicoIds?: string[],
 ): Promise<{ error?: string }> {
   try {
     const session = await auth()
@@ -48,20 +50,69 @@ export async function atualizarStatusTarefa(
       return { error: "Sem permissão para reabrir esta tarefa." }
     }
 
+    const dataEfetiva = dataOverride ? new Date(dataOverride) : new Date()
+    const userId = session.user.id
+
     await prisma.tarefaCompdin.update({
       where: { id },
       data: {
         status: novoStatus,
-        responsavelId: novoStatus !== "PENDENTE" ? session.user.id : null,
-        iniciadoEm: novoStatus === "INICIADA" ? new Date() : novoStatus === "PENDENTE" ? null : undefined,
-        concluidoEm: novoStatus === "CONCLUIDA" ? new Date() : novoStatus === "PENDENTE" || novoStatus === "INICIADA" ? null : undefined,
+        responsavelId: novoStatus !== "PENDENTE" ? userId : null,
+        iniciadoEm: novoStatus === "INICIADA" ? dataEfetiva : novoStatus === "PENDENTE" ? null : undefined,
+        concluidoEm: novoStatus === "CONCLUIDA" ? dataEfetiva : novoStatus === "PENDENTE" || novoStatus === "INICIADA" ? null : undefined,
+      },
+    })
+
+    if (novoStatus !== "PENDENTE") {
+      const todosIds = [userId, ...(extraMecanicoIds ?? []).filter((mid) => mid !== userId)]
+      await prisma.tarefaCompdinMecanico.deleteMany({ where: { tarefaId: id } })
+      await prisma.tarefaCompdinMecanico.createMany({
+        data: todosIds.map((mecId) => ({ tarefaId: id, mecanicoId: mecId })),
+      })
+    } else {
+      await prisma.tarefaCompdinMecanico.deleteMany({ where: { tarefaId: id } })
+    }
+
+    revalidatePath("/anvs")
+    revalidatePath("/compdin")
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao atualizar tarefa." }
+  }
+}
+
+export async function editarDatasTarefa(
+  id: string,
+  iniciadoEm: string | null,
+  concluidoEm: string | null,
+): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+
+    const tarefa = await prisma.tarefaCompdin.findUnique({
+      where: { id },
+      select: { autorId: true, responsavelId: true },
+    })
+    if (!tarefa) return { error: "Tarefa não encontrada." }
+
+    const isPrivileged = PRIVILEGED.includes(session.user.role)
+    const isOwn = tarefa.responsavelId === session.user.id || tarefa.autorId === session.user.id
+
+    if (!isPrivileged && !isOwn) return { error: "Sem permissão para editar estas datas." }
+
+    await prisma.tarefaCompdin.update({
+      where: { id },
+      data: {
+        iniciadoEm: iniciadoEm !== null ? new Date(iniciadoEm) : null,
+        concluidoEm: concluidoEm !== null ? new Date(concluidoEm) : null,
       },
     })
     revalidatePath("/anvs")
     revalidatePath("/compdin")
     return {}
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Erro ao atualizar tarefa." }
+    return { error: err instanceof Error ? err.message : "Erro ao editar datas." }
   }
 }
 

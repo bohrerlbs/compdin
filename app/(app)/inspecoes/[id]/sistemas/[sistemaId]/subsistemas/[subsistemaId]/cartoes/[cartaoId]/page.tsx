@@ -28,7 +28,7 @@ export default async function CartaoPage({ params }: Props) {
   const role = session!.user.role
   const userId = session!.user.id
 
-  const [inspecao, cartao] = await Promise.all([
+  const [inspecao, cartao, todosMecanicos] = await Promise.all([
     prisma.inspecao.findUnique({
       where: { id: inspecaoId },
       include: { anv: true },
@@ -47,6 +47,10 @@ export default async function CartaoPage({ params }: Props) {
               include: {
                 subitem: { select: { id: true, letra: true, ordem: true } },
                 mecanico: { select: { trigrama: true, nome: true } },
+                mecanicos: {
+                  include: { mecanico: { select: { id: true, trigrama: true, nome: true } } },
+                  orderBy: { mecanico: { trigrama: "asc" } },
+                },
               },
               orderBy: { subitem: { ordem: "asc" } },
             },
@@ -67,6 +71,11 @@ export default async function CartaoPage({ params }: Props) {
         },
       },
     }),
+    prisma.user.findMany({
+      where: { ativo: true },
+      select: { id: true, trigrama: true, nome: true },
+      orderBy: { trigrama: "asc" },
+    }),
   ])
 
   if (!inspecao || !cartao) notFound()
@@ -74,6 +83,7 @@ export default async function CartaoPage({ params }: Props) {
   const execucao = cartao.execucoes[0]
   const inspecaoAberta = inspecao.status === "ABERTA"
   const podeEditar = inspecaoAberta && (role === "MECANICO" || role === "ENCARREGADO" || role === "ADMIN")
+  const podeEditarDatasAlheias = inspecaoAberta && (role === "ADMIN" || role === "ENCARREGADO" || role === "INSPETOR")
   const podeAvisar = inspecaoAberta
   const podeDesassinar = inspecaoAberta && (role === "INSPETOR" || role === "ADMIN") && !!execucao?.inspecionadoEm
 
@@ -360,6 +370,10 @@ export default async function CartaoPage({ params }: Props) {
               inspecionadoEm={execucao.inspecionadoEm?.toISOString()}
               inspecionadorTrigrama={execucao.inspecionador?.trigrama}
               userId={userId}
+              mecanicoId={st.mecanicoId ?? undefined}
+              podeEditarDatasAlheias={podeEditarDatasAlheias}
+              todosMecanicos={todosMecanicos}
+              mecanicosParticipantes={st.mecanicos.map((m) => m.mecanico)}
             />
           ))}
         </div>

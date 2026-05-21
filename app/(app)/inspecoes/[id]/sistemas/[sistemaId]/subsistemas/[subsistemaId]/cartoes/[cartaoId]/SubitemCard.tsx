@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { StatusSubitem } from "@prisma/client"
-import { atualizarSubitem, inspecionarCartao, salvarObservacao, desassinarCartao } from "./actions"
+import { atualizarSubitem, editarDatasSubitem, inspecionarCartao, salvarObservacao, desassinarCartao } from "./actions"
 
 interface Props {
   statusId: string
@@ -27,6 +27,10 @@ interface Props {
   inspecionadoEm?: string
   inspecionadorTrigrama?: string
   userId: string
+  mecanicoId?: string
+  podeEditarDatasAlheias: boolean
+  todosMecanicos?: Array<{ id: string; trigrama: string; nome: string }>
+  mecanicosParticipantes?: Array<{ id: string; trigrama: string; nome: string }>
 }
 
 const STATUS_BG: Record<StatusSubitem, string> = {
@@ -63,6 +67,10 @@ export default function SubitemCard({
   inspecionadoEm,
   inspecionadorTrigrama,
   userId,
+  mecanicoId,
+  podeEditarDatasAlheias,
+  todosMecanicos = [],
+  mecanicosParticipantes = [],
 }: Props) {
   const [status, setStatus] = useState(initialStatus)
   const [inspecionado, setInspecionado] = useState(!!inspecionadoEm)
@@ -76,14 +84,60 @@ export default function SubitemCard({
   const [msgDesassinar, setMsgDesassinar] = useState("")
   const [erroDesassinar, setErroDesassinar] = useState("")
   const [isDesassinando, startDesassinar] = useTransition()
+  const [pendingStatus, setPendingStatus] = useState<StatusSubitem | null>(null)
+  const [dateInput, setDateInput] = useState("")
+  const [mecsSelecionados, setMecsSelecionados] = useState<string[]>([])
+  const [editandoDatas, setEditandoDatas] = useState(false)
+  const [editInicio, setEditInicio] = useState("")
+  const [editConclusao, setEditConclusao] = useState("")
+  const [erroEditDatas, setErroEditDatas] = useState("")
+  const [isSavingDatas, startSavingDatas] = useTransition()
+
+  const podeEditarEstasDatas =
+    (podeEditarDatasAlheias || (podeEditar && mecanicoId === userId)) &&
+    (!!dataInicio || !!dataConclusao)
 
   function handleCiclo() {
     if (!podeEditar || isPending) return
     const next: StatusSubitem =
       status === "PENDENTE" ? "INICIADA" : status === "INICIADA" ? "CONCLUIDA" : "PENDENTE"
+
+    if (next === "PENDENTE") {
+      setStatus(next)
+      startTransition(async () => {
+        await atualizarSubitem(statusId, next)
+      })
+    } else {
+      setPendingStatus(next)
+      setDateInput(fmtLocalInput(new Date()))
+      setMecsSelecionados([userId])
+    }
+  }
+
+  function handleConfirmarData() {
+    if (!pendingStatus || isPending) return
+    const next = pendingStatus
+    const extras = mecsSelecionados.filter((id) => id !== userId)
+    setPendingStatus(null)
     setStatus(next)
     startTransition(async () => {
-      await atualizarSubitem(statusId, next)
+      await atualizarSubitem(statusId, next, dateInput, extras)
+    })
+  }
+
+  function handleAbrirEditDatas() {
+    setEditInicio(dataInicio ? fmtLocalInput(new Date(dataInicio)) : "")
+    setEditConclusao(dataConclusao ? fmtLocalInput(new Date(dataConclusao)) : "")
+    setEditandoDatas(true)
+    setErroEditDatas("")
+  }
+
+  function handleSalvarDatas() {
+    if (isSavingDatas) return
+    startSavingDatas(async () => {
+      const res = await editarDatasSubitem(statusId, editInicio || null, editConclusao || null)
+      if (res.error) { setErroEditDatas(res.error); return }
+      setEditandoDatas(false)
     })
   }
 
@@ -149,22 +203,24 @@ export default function SubitemCard({
             {status === "CONCLUIDA" ? "CONCLUÍDO" : status === "INICIADA" ? "EM EXECUÇÃO" : "PENDENTE"}
           </span>
 
-          {/* Trigrama + hora visíveis no cabeçalho quando em execução ou concluído */}
-          {mecanicoTrigrama && status !== "PENDENTE" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{
-                background: status === "CONCLUIDA" ? "rgba(39,98,58,0.4)" : "rgba(180,83,9,0.4)",
-                border: `1px solid ${status === "CONCLUIDA" ? "rgba(74,222,128,0.4)" : "rgba(251,191,36,0.4)"}`,
-                borderRadius: 4,
-                padding: "1px 5px",
-                fontFamily: "monospace",
-                fontWeight: 800,
-                fontSize: "0.7rem",
-                color: status === "CONCLUIDA" ? "var(--green-text)" : "var(--yellow-text)",
-                letterSpacing: "0.08em",
-              }}>
-                {mecanicoTrigrama}
-              </span>
+          {/* Trigrama(s) + hora visíveis no cabeçalho */}
+          {status !== "PENDENTE" && (mecanicoTrigrama || mecanicosParticipantes.length > 0) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              {(mecanicosParticipantes.length > 0 ? mecanicosParticipantes : mecanicoTrigrama ? [{ id: "", trigrama: mecanicoTrigrama, nome: "" }] : []).map((m) => (
+                <span key={m.id || m.trigrama} style={{
+                  background: status === "CONCLUIDA" ? "rgba(39,98,58,0.4)" : "rgba(180,83,9,0.4)",
+                  border: `1px solid ${status === "CONCLUIDA" ? "rgba(74,222,128,0.4)" : "rgba(251,191,36,0.4)"}`,
+                  borderRadius: 4,
+                  padding: "1px 5px",
+                  fontFamily: "monospace",
+                  fontWeight: 800,
+                  fontSize: "0.7rem",
+                  color: status === "CONCLUIDA" ? "var(--green-text)" : "var(--yellow-text)",
+                  letterSpacing: "0.08em",
+                }}>
+                  {m.trigrama}
+                </span>
+              ))}
               <span style={{ color: "var(--text-dim)", fontSize: "0.6rem" }}>
                 {status === "CONCLUIDA" && dataConclusao
                   ? fmtHora(dataConclusao)
@@ -176,7 +232,7 @@ export default function SubitemCard({
           )}
         </div>
 
-        {podeEditar && (
+        {podeEditar && !pendingStatus && (
           <button
             onClick={handleCiclo}
             disabled={isPending}
@@ -207,7 +263,118 @@ export default function SubitemCard({
             {status === "PENDENTE" ? "INICIAR" : status === "INICIADA" ? "CONCLUIR" : "REABRIR"}
           </button>
         )}
+        {podeEditar && pendingStatus && (
+          <button
+            onClick={() => setPendingStatus(null)}
+            style={{
+              fontSize: "0.68rem",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              padding: "4px 12px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              background: "none",
+              color: "var(--text-muted)",
+            }}
+          >
+            CANCELAR
+          </button>
+        )}
       </div>
+
+      {/* Date picker para INICIAR/CONCLUIR retroativo */}
+      {pendingStatus && (
+        <div style={{
+          margin: "0 0 0 0",
+          padding: "0.75rem 1rem",
+          background: pendingStatus === "INICIADA" ? "rgba(180,83,9,0.12)" : "rgba(39,98,58,0.12)",
+          borderBottom: `1px solid ${pendingStatus === "INICIADA" ? "rgba(251,191,36,0.25)" : "rgba(74,222,128,0.2)"}`,
+        }}>
+          <p style={{ color: "var(--text-dim)", fontSize: "0.62rem", letterSpacing: "0.1em", marginBottom: 8, fontWeight: 700 }}>
+            {pendingStatus === "INICIADA" ? "DATA/HORA DE INÍCIO" : "DATA/HORA DE CONCLUSÃO"}
+          </p>
+          <input
+            type="datetime-local"
+            value={dateInput}
+            onChange={e => setDateInput(e.target.value)}
+            max={fmtLocalInput(new Date())}
+            style={{
+              background: "var(--bg-input)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              color: "var(--text-primary)",
+              padding: "0.35rem 0.6rem",
+              fontSize: "0.78rem",
+              outline: "none",
+              width: "100%",
+              boxSizing: "border-box",
+              colorScheme: "dark",
+            }}
+          />
+          {todosMecanicos.length > 1 && (
+            <div style={{ marginTop: 10 }}>
+              <p style={{ color: "var(--text-dim)", fontSize: "0.6rem", letterSpacing: "0.08em", marginBottom: 6, fontWeight: 700 }}>MECÂNICOS</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {todosMecanicos.map((m) => {
+                  const isMe = m.id === userId
+                  const checked = mecsSelecionados.includes(m.id)
+                  return (
+                    <label
+                      key={m.id}
+                      style={{ display: "flex", alignItems: "center", gap: 8, cursor: isMe ? "default" : "pointer" }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={isMe}
+                        onChange={() => {
+                          if (isMe) return
+                          setMecsSelecionados((prev) =>
+                            prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                          )
+                        }}
+                        style={{ accentColor: "var(--gold)", width: 14, height: 14, cursor: isMe ? "default" : "pointer" }}
+                      />
+                      <span style={{
+                        fontFamily: "monospace",
+                        fontWeight: 800,
+                        fontSize: "0.7rem",
+                        color: checked ? (pendingStatus === "INICIADA" ? "var(--yellow-text)" : "var(--green-text)") : "var(--text-dim)",
+                        letterSpacing: "0.08em",
+                      }}>
+                        {m.trigrama}
+                      </span>
+                      <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>{m.nome}{isMe ? " (você)" : ""}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button
+              onClick={handleConfirmarData}
+              disabled={isPending || !dateInput}
+              style={{
+                flex: 1,
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                letterSpacing: "0.06em",
+                padding: "5px 10px",
+                borderRadius: 6,
+                border: "none",
+                cursor: isPending || !dateInput ? "not-allowed" : "pointer",
+                opacity: isPending || !dateInput ? 0.5 : 1,
+                background: pendingStatus === "INICIADA" ? "rgba(180,83,9,0.6)" : "rgba(39,98,58,0.7)",
+                color: pendingStatus === "INICIADA" ? "var(--yellow-text)" : "var(--green-text)",
+              }}
+            >
+              {pendingStatus === "INICIADA" ? "INICIAR" : "CONCLUIR"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Corpo */}
       <div style={{ padding: "0.75rem 1rem" }}>
@@ -279,53 +446,112 @@ export default function SubitemCard({
           </div>
         )}
 
-        {/* Meta: trigrama + datas */}
-        {(mecanicoTrigrama || dataInicio) && (
+        {/* Meta: trigrama(s) + datas */}
+        {(mecanicoTrigrama || mecanicosParticipantes.length > 0 || dataInicio) && (
           <div
             style={{
               marginTop: 10,
               paddingTop: 8,
               borderTop: "1px solid var(--border)",
               display: "flex",
-              gap: "1rem",
+              gap: "0.75rem",
               flexWrap: "wrap",
-              alignItems: "center",
+              alignItems: "flex-start",
             }}
           >
-            {mecanicoTrigrama && (
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span
-                  style={{
-                    background: "var(--gold-dim)",
-                    border: "1px solid var(--border-gold)",
-                    borderRadius: 4,
-                    padding: "1px 6px",
-                    fontFamily: "monospace",
-                    fontWeight: 800,
-                    fontSize: "0.75rem",
-                    color: "var(--gold-bright)",
-                    letterSpacing: "0.08em",
-                  }}
-                >
-                  {mecanicoTrigrama}
+            {/* Mecânicos participantes */}
+            {(mecanicosParticipantes.length > 0
+              ? mecanicosParticipantes
+              : mecanicoTrigrama
+              ? [{ id: "", trigrama: mecanicoTrigrama, nome: mecanicoNome ?? "" }]
+              : []
+            ).map((m) => (
+              <div key={m.id || m.trigrama} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{
+                  background: "var(--gold-dim)",
+                  border: "1px solid var(--border-gold)",
+                  borderRadius: 4,
+                  padding: "1px 6px",
+                  fontFamily: "monospace",
+                  fontWeight: 800,
+                  fontSize: "0.75rem",
+                  color: "var(--gold-bright)",
+                  letterSpacing: "0.08em",
+                }}>
+                  {m.trigrama}
                 </span>
-                <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>
-                  {mecanicoNome}
-                </span>
+                {m.nome && (
+                  <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>{m.nome}</span>
+                )}
+              </div>
+            ))}
+            {!editandoDatas ? (
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+                {dataInicio && (
+                  <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>
+                    Início: {fmtDateTime(dataInicio)}
+                  </span>
+                )}
+                {dataConclusao && (
+                  <span style={{ color: "var(--green-text)", fontSize: "0.65rem" }}>
+                    Conclusão: {fmtDateTime(dataConclusao)}
+                  </span>
+                )}
+                {podeEditarEstasDatas && (
+                  <button
+                    onClick={handleAbrirEditDatas}
+                    style={{ fontSize: "0.6rem", color: "var(--text-dim)", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline", textDecorationStyle: "dotted" }}
+                  >
+                    editar datas
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div style={{ width: "100%", marginTop: 4 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {dataInicio && (
+                    <div>
+                      <label style={{ display: "block", color: "var(--text-dim)", fontSize: "0.58rem", letterSpacing: "0.08em", marginBottom: 3 }}>INÍCIO</label>
+                      <input
+                        type="datetime-local"
+                        value={editInicio}
+                        onChange={e => setEditInicio(e.target.value)}
+                        max={fmtLocalInput(new Date())}
+                        style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", padding: "0.3rem 0.5rem", fontSize: "0.75rem", outline: "none", width: "100%", boxSizing: "border-box", colorScheme: "dark" }}
+                      />
+                    </div>
+                  )}
+                  {dataConclusao && (
+                    <div>
+                      <label style={{ display: "block", color: "var(--text-dim)", fontSize: "0.58rem", letterSpacing: "0.08em", marginBottom: 3 }}>CONCLUSÃO</label>
+                      <input
+                        type="datetime-local"
+                        value={editConclusao}
+                        onChange={e => setEditConclusao(e.target.value)}
+                        max={fmtLocalInput(new Date())}
+                        style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", padding: "0.3rem 0.5rem", fontSize: "0.75rem", outline: "none", width: "100%", boxSizing: "border-box", colorScheme: "dark" }}
+                      />
+                    </div>
+                  )}
+                  {erroEditDatas && <p style={{ color: "var(--red-text)", fontSize: "0.65rem", margin: 0 }}>{erroEditDatas}</p>}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={handleSalvarDatas}
+                      disabled={isSavingDatas}
+                      style={{ fontSize: "0.68rem", fontWeight: 700, padding: "4px 12px", borderRadius: 5, border: "none", background: "rgba(39,98,58,0.5)", color: "var(--green-text)", cursor: isSavingDatas ? "not-allowed" : "pointer", opacity: isSavingDatas ? 0.5 : 1 }}
+                    >
+                      {isSavingDatas ? "Salvando..." : "Salvar"}
+                    </button>
+                    <button
+                      onClick={() => setEditandoDatas(false)}
+                      style={{ fontSize: "0.68rem", padding: "4px 10px", borderRadius: 5, background: "none", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer" }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              {dataInicio && (
-                <span style={{ color: "var(--text-dim)", fontSize: "0.65rem" }}>
-                  Início: {fmtDateTime(dataInicio)}
-                </span>
-              )}
-              {dataConclusao && (
-                <span style={{ color: "var(--green-text)", fontSize: "0.65rem" }}>
-                  Conclusão: {fmtDateTime(dataConclusao)}
-                </span>
-              )}
-            </div>
           </div>
         )}
 
@@ -566,6 +792,11 @@ export default function SubitemCard({
       </div>
     </div>
   )
+}
+
+function fmtLocalInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function fmtDateTime(iso: string) {

@@ -6,7 +6,12 @@ import { StatusSubitem } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { sendPushToRole, sendPushToUser } from "@/lib/push"
 
-export async function atualizarSubitem(statusId: string, novoStatus: StatusSubitem) {
+export async function atualizarSubitem(
+  statusId: string,
+  novoStatus: StatusSubitem,
+  dataOverride?: string,
+  extraMecanicoIds?: string[],
+) {
   const session = await auth()
   if (!session) throw new Error("Não autorizado.")
 
@@ -15,15 +20,27 @@ export async function atualizarSubitem(statusId: string, novoStatus: StatusSubit
     throw new Error("Sem permissão.")
   }
 
+  const dataEfetiva = dataOverride ? new Date(dataOverride) : new Date()
+
   await prisma.subitemStatus.update({
     where: { id: statusId },
     data: {
       status: novoStatus,
       mecanicoId: userId,
-      dataInicio: novoStatus === "INICIADA" ? new Date() : undefined,
-      dataConclusao: novoStatus === "CONCLUIDA" ? new Date() : undefined,
+      dataInicio: novoStatus === "INICIADA" ? dataEfetiva : undefined,
+      dataConclusao: novoStatus === "CONCLUIDA" ? dataEfetiva : undefined,
     },
   })
+
+  if (novoStatus !== "PENDENTE") {
+    const todosIds = [userId, ...(extraMecanicoIds ?? []).filter((id) => id !== userId)]
+    await prisma.subitemStatusMecanico.deleteMany({ where: { statusId } })
+    await prisma.subitemStatusMecanico.createMany({
+      data: todosIds.map((mecId) => ({ statusId, mecanicoId: mecId })),
+    })
+  } else {
+    await prisma.subitemStatusMecanico.deleteMany({ where: { statusId } })
+  }
 
   // Notifications only for INICIADA / CONCLUIDA
   if (novoStatus === "INICIADA" || novoStatus === "CONCLUIDA") {
@@ -463,5 +480,56 @@ export async function registrarDefeito(execucaoId: string, descricao: string) {
     } catch {
       // best-effort
     }
+  }
+}
+
+export async function editarDatasSubitem(
+  statusId: string,
+  dataInicio: string | null,
+  dataConclusao: string | null,
+): Promise<{ error?: string }> {
+  try {
+    const session = await auth()
+    if (!session) return { error: "Não autorizado." }
+
+    const { id: userId, role } = session.user
+
+    const st = await prisma.subitemStatus.findUnique({
+      where: { id: statusId },
+      select: {
+        mecanicoId: true,
+        execucao: {
+          select: {
+            inspecaoId: true,
+            cartaoId: true,
+            cartao: { select: { subsistema: { select: { id: true, sistemaId: true } } } },
+          },
+        },
+      },
+    })
+    if (!st) return { error: "Registro não encontrado." }
+
+    const isPrivileged = role === "ADMIN" || role === "ENCARREGADO" || role === "INSPETOR"
+    const isOwn = st.mecanicoId === userId
+
+    if (!isPrivileged && !isOwn) return { error: "Sem permissão para editar estas datas." }
+
+    await prisma.subitemStatus.update({
+      where: { id: statusId },
+      data: {
+        dataInicio: dataInicio !== null ? new Date(dataInicio) : null,
+        dataConclusao: dataConclusao !== null ? new Date(dataConclusao) : null,
+      },
+    })
+
+    const exec = st.execucao
+    if (exec) {
+      const path = `/inspecoes/${exec.inspecaoId}/sistemas/${exec.cartao.subsistema.sistemaId}/subsistemas/${exec.cartao.subsistema.id}/cartoes/${exec.cartaoId}`
+      revalidatePath(path)
+    }
+
+    return {}
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Erro ao editar datas." }
   }
 }
