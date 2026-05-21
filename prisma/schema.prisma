@@ -167,11 +167,12 @@ enum InspecaoTipo {
   PMS_360
   PMI_480
   PMI_960
-  EP1_ERO       // Inspeção Especial 1 — Atmosfera Erosiva
-  EP2_POU       // Inspeção Especial 2 — Pouso Duro
-  EP3_PAR       // Inspeção Especial 3 — Parada Brusca
-  EP5_PRP       // Inspeção Especial 5 — PRP Atmosfera Erosiva
-  INSP_ESPECIAL // Inspeção Especial (configurável pelo inspetor/encarregado)
+  EP1_ERO        // Inspeção Especial 1 — Atmosfera Erosiva
+  EP2_POU        // Inspeção Especial 2 — Pouso Duro
+  EP3_PAR        // Inspeção Especial 3 — Parada Brusca
+  EP5_PRP        // Inspeção Especial 5 — PRP Atmosfera Erosiva
+  INSP_ESPECIAL  // Inspeção Especial (configurável pelo inspetor/encarregado)
+  MNT_NAO_PROG   // Manutenção Não Programada (sem cartões pré-definidos)
 }
 
 enum InspecaoStatus {

@@ -16,6 +16,7 @@ export const INSPECAO_LABELS: Record<InspecaoTipo, string> = {
   EP3_PAR:       "Insp. Esp. 3 — Parada Brusca",
   EP5_PRP:       "Insp. Esp. 5 — PRP Atm. Erosiva",
   INSP_ESPECIAL: "Inspeção Especial",
+  MNT_NAO_PROG:  "Manutenção Não Programada",
 }
 
 export const INSPECAO_SHORT: Record<InspecaoTipo, string> = {
@@ -34,6 +35,7 @@ export const INSPECAO_SHORT: Record<InspecaoTipo, string> = {
   EP3_PAR:       "EP3 — Parada Brusca",
   EP5_PRP:       "EP5 — PRP Erosiva",
   INSP_ESPECIAL: "Insp. Especial",
+  MNT_NAO_PROG:  "Manut. Não Prog.",
 }
 
 export function formatTipo(tipo: string): string {
@@ -46,7 +48,7 @@ export const TIPOS_PERIODICOS: InspecaoTipo[] = [
 ]
 
 export const TIPOS_ESPECIAIS: InspecaoTipo[] = [
-  "EP1_ERO", "EP2_POU", "EP3_PAR", "EP5_PRP", "INSP_ESPECIAL",
+  "EP1_ERO", "EP2_POU", "EP3_PAR", "EP5_PRP", "INSP_ESPECIAL", "MNT_NAO_PROG",
 ]
 
 export const TIPOS_INSPECAO_AGRUPADOS = [
@@ -78,6 +80,7 @@ export const TIPOS_INSPECAO_AGRUPADOS = [
       { value: "EP3_PAR"       as InspecaoTipo, label: INSPECAO_LABELS.EP3_PAR       },
       { value: "EP5_PRP"       as InspecaoTipo, label: INSPECAO_LABELS.EP5_PRP       },
       { value: "INSP_ESPECIAL" as InspecaoTipo, label: INSPECAO_LABELS.INSP_ESPECIAL },
+      { value: "MNT_NAO_PROG"  as InspecaoTipo, label: INSPECAO_LABELS.MNT_NAO_PROG  },
     ],
   },
 ]

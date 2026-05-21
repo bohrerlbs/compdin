@@ -149,7 +149,7 @@ export default async function InspecaoPage({ params }: Props) {
         <div className="mb-4">
           <AdicionarCartaoCatalogoButton
             inspecaoId={id}
-            isEspecial={inspecao.tipo === "INSP_ESPECIAL"}
+            isEspecial={inspecao.tipo === "INSP_ESPECIAL" || inspecao.tipo === "MNT_NAO_PROG"}
           />
         </div>
       )}

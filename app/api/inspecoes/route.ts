@@ -14,16 +14,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 })
   }
 
-  // INSP_ESPECIAL: inspetor, admin e encarregado podem abrir
+  // Tipos sem cartão pré-definido: inspetor, admin e encarregado podem abrir
   // Demais tipos: apenas inspetor e admin
-  const isEspecial = tipo === "INSP_ESPECIAL"
-  const canOpen = role === "INSPETOR" || role === "ADMIN" || (isEspecial && role === "ENCARREGADO")
+  const isSemCartao = tipo === "INSP_ESPECIAL" || tipo === "MNT_NAO_PROG"
+  const canOpen = role === "INSPETOR" || role === "ADMIN" || (isSemCartao && role === "ENCARREGADO")
   if (!canOpen) {
     return NextResponse.json({ error: "Sem permissão." }, { status: 403 })
   }
 
-  // Para INSP_ESPECIAL, permite múltiplas abertas (cada uma é única por ocasião)
-  if (!isEspecial) {
+  // Tipos sem cartão permitem múltiplas abertas (cada ocorrência é independente)
+  if (!isSemCartao) {
     const existente = await prisma.inspecao.findFirst({
       where: { anvId, tipo: tipo as InspecaoTipo, status: InspecaoStatus.ABERTA },
     })
@@ -32,10 +32,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // Para INSP_ESPECIAL: cria sem cartões (o inspetor adiciona depois)
-  if (isEspecial) {
+  // Tipos sem cartão: cria vazia (inspetor/encarregado adiciona cartões depois)
+  if (isSemCartao) {
     const inspecao = await prisma.inspecao.create({
-      data: { anvId, tipo: "INSP_ESPECIAL", abertaPorId: userId },
+      data: { anvId, tipo: tipo as InspecaoTipo, abertaPorId: userId },
     })
     return NextResponse.json({ id: inspecao.id }, { status: 201 })
   }

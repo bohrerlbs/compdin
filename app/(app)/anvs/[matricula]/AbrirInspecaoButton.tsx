@@ -43,11 +43,12 @@ export default function AbrirInspecaoButton({
     }
   }
 
-  // ENCARREGADO só pode abrir INSP_ESPECIAL
+  // ENCARREGADO só pode abrir tipos sem cartão pré-definido
+  const TIPOS_SEM_CARTAO = ["INSP_ESPECIAL", "MNT_NAO_PROG"]
   const grupos = role === "ENCARREGADO"
     ? TIPOS_INSPECAO_AGRUPADOS.filter((g) => g.grupo === "Inspeções Especiais").map((g) => ({
         ...g,
-        tipos: g.tipos.filter((t) => t.value === "INSP_ESPECIAL"),
+        tipos: g.tipos.filter((t) => TIPOS_SEM_CARTAO.includes(t.value)),
       }))
     : TIPOS_INSPECAO_AGRUPADOS
 
@@ -58,6 +59,7 @@ export default function AbrirInspecaoButton({
           if (role === "ENCARREGADO") setTipo("INSP_ESPECIAL")
           setOpen(true)
         }}
+
         className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors"
       >
         + Abrir Inspeção
@@ -83,9 +85,9 @@ export default function AbrirInspecaoButton({
               ))}
             </select>
 
-            {tipo === "INSP_ESPECIAL" && (
+            {(tipo === "INSP_ESPECIAL" || tipo === "MNT_NAO_PROG") && (
               <p className="text-yellow-400 text-xs mb-3 bg-yellow-900/20 border border-yellow-800 rounded-lg px-3 py-2">
-                Inspeção Especial abre sem cartões. O inspetor ou encarregado adiciona sistemas, subsistemas e cartões conforme necessário.
+                {tipo === "MNT_NAO_PROG" ? "Manutenção Não Programada" : "Inspeção Especial"} abre sem cartões. O inspetor ou encarregado adiciona sistemas, subsistemas e cartões conforme necessário.
               </p>
             )}
 
