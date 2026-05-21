@@ -85,6 +85,7 @@ export async function editarDatasTarefa(
   id: string,
   iniciadoEm: string | null,
   concluidoEm: string | null,
+  mecanicoIds?: string[],
 ): Promise<{ error?: string }> {
   try {
     const session = await auth()
@@ -108,6 +109,14 @@ export async function editarDatasTarefa(
         concluidoEm: concluidoEm !== null ? new Date(concluidoEm) : null,
       },
     })
+
+    if (mecanicoIds !== undefined && mecanicoIds.length > 0) {
+      await prisma.tarefaCompdinMecanico.deleteMany({ where: { tarefaId: id } })
+      await prisma.tarefaCompdinMecanico.createMany({
+        data: mecanicoIds.map((mecId) => ({ tarefaId: id, mecanicoId: mecId })),
+      })
+    }
+
     revalidatePath("/anvs")
     revalidatePath("/compdin")
     return {}

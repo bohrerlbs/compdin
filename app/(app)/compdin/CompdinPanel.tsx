@@ -158,14 +158,23 @@ export default function CompdinPanel({ tarefas: initial, userId, userRole, todos
     setEditDatasId(tarefa.id)
     setEditInicio(tarefa.iniciadoEm ? fmtLocalInput(tarefa.iniciadoEm) : "")
     setEditConclusao(tarefa.concluidoEm ? fmtLocalInput(tarefa.concluidoEm) : "")
+    setMecsSelecionados(
+      tarefa.mecanicos.length > 0
+        ? tarefa.mecanicos.map((m) => m.mecanico.id)
+        : tarefa.responsavelId ? [tarefa.responsavelId] : []
+    )
     setErroDatas("")
   }
 
   async function handleSalvarEditDatas(id: string) {
-    const res = await editarDatasTarefa(id, editInicio || null, editConclusao || null)
+    const res = await editarDatasTarefa(
+      id,
+      editInicio || null,
+      editConclusao || null,
+      mecsSelecionados.length > 0 ? mecsSelecionados : undefined,
+    )
     if (res.error) { setErroDatas(res.error); return }
     setEditDatasId(null)
-    // Page will revalidate via revalidatePath in the action
     window.location.reload()
   }
 
@@ -400,6 +409,34 @@ export default function CompdinPanel({ tarefas: initial, userId, userRole, todos
                 <div>
                   <label style={{ display: "block", color: "var(--text-dim)", fontSize: "0.58rem", letterSpacing: "0.08em", marginBottom: 3 }}>CONCLUSÃO</label>
                   <input type="datetime-local" value={editConclusao} onChange={e => setEditConclusao(e.target.value)} max={fmtLocalInput(new Date())} style={{ background: "var(--bg-input)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-primary)", padding: "0.3rem 0.5rem", fontSize: "0.75rem", outline: "none", width: "100%", boxSizing: "border-box", colorScheme: "dark" }} />
+                </div>
+              )}
+              {todosMecanicos.length > 1 && (
+                <div>
+                  <label style={{ display: "block", color: "var(--text-dim)", fontSize: "0.58rem", letterSpacing: "0.08em", marginBottom: 5 }}>MECÂNICOS</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {todosMecanicos.map((m) => {
+                      const checked = mecsSelecionados.includes(m.id)
+                      return (
+                        <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setMecsSelecionados((prev) =>
+                                prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                              )
+                            }
+                            style={{ accentColor: "var(--gold)", width: 13, height: 13 }}
+                          />
+                          <span style={{ fontFamily: "monospace", fontWeight: 800, fontSize: "0.68rem", color: checked ? "var(--green-text)" : "var(--text-dim)", letterSpacing: "0.08em" }}>
+                            {m.trigrama}
+                          </span>
+                          <span style={{ color: "var(--text-dim)", fontSize: "0.62rem" }}>{m.nome}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
               {erroDatas && <p style={{ color: "var(--red-text)", fontSize: "0.65rem", margin: 0 }}>{erroDatas}</p>}

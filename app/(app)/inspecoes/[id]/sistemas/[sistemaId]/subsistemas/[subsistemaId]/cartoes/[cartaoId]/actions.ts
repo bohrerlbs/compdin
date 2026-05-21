@@ -487,6 +487,7 @@ export async function editarDatasSubitem(
   statusId: string,
   dataInicio: string | null,
   dataConclusao: string | null,
+  mecanicoIds?: string[],
 ): Promise<{ error?: string }> {
   try {
     const session = await auth()
@@ -521,6 +522,13 @@ export async function editarDatasSubitem(
         dataConclusao: dataConclusao !== null ? new Date(dataConclusao) : null,
       },
     })
+
+    if (mecanicoIds !== undefined && mecanicoIds.length > 0) {
+      await prisma.subitemStatusMecanico.deleteMany({ where: { statusId } })
+      await prisma.subitemStatusMecanico.createMany({
+        data: mecanicoIds.map((mecId) => ({ statusId, mecanicoId: mecId })),
+      })
+    }
 
     const exec = st.execucao
     if (exec) {
