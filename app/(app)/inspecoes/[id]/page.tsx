@@ -3,6 +3,7 @@ import { auth } from "@/auth"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import FecharInspecaoButton from "./FecharInspecaoButton"
+import CancelarInspecaoButton from "./CancelarInspecaoButton"
 import AdicionarCartaoCatalogoButton from "./AdicionarCartaoCatalogoButton"
 import { formatTipo } from "@/lib/inspecao"
 
@@ -157,6 +158,13 @@ export default async function InspecaoPage({ params }: Props) {
       {/* Fechar inspeção */}
       {inspecao.status === "ABERTA" && (role === "INSPETOR" || role === "ADMIN") && (
         <FecharInspecaoButton inspecaoId={id} />
+      )}
+
+      {/* Cancelar inspeção */}
+      {inspecao.status === "ABERTA" && (role === "ADMIN" || role === "INSPETOR" || role === "ENCARREGADO") && (
+        <div className="mt-3">
+          <CancelarInspecaoButton inspecaoId={id} anvMatricula={inspecao.anv.matricula} />
+        </div>
       )}
     </div>
   )
